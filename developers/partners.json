@@ -1,0 +1,17 @@
+{
+  "$comment": "Comprehend partner directory. Curated by Comprehend; to be listed, open a PR against this file in github.com/jake-comprehendpt/comprehend-apps (see CONTRIBUTING.md). Listing means we verified the origin, the hosted script, framing headers and the patient-null/ref handling. It does NOT stand in for a clinic's BAA — every clinic still confirms its own BAA before enabling.",
+  "schema": {
+    "id": "short stable slug, e.g. acme-hep",
+    "name": "display name",
+    "category": "one of: hep, rtm, outcomes, force-plate, scheduling, billing, other",
+    "blurb": "one sentence, what a clinician gets (max 140 chars)",
+    "embedOrigin": "exact https origin of the embedded page",
+    "launchUrl": "https URL on that origin; Comprehend appends ?comprehend=1",
+    "website": "https URL for the vendor's public page (optional)",
+    "docs": "https URL for the vendor's integration/BAA page (optional)",
+    "logo": "https URL to a square SVG/PNG (optional)",
+    "verified": "true once Comprehend has reviewed the checklist in CONTRIBUTING.md",
+    "listedAt": "YYYY-MM-DD"
+  },
+  "partners": []
+}

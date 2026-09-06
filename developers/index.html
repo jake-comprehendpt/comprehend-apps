@@ -47,6 +47,7 @@
     <a href="#contract">Contract</a>
     <a href="#trust">Trust</a>
     <a href="#start">Start building</a>
+    <a href="#directory">Directory</a>
     <a href="../vendor-sandbox/">Sandbox</a>
   </nav>
 
@@ -155,9 +156,60 @@ myApp.on(<span class="s">'chartOpened'</span>, sync);</code></pre>
     </ul>
   </section>
 
+  <section id="directory">
+    <h2>Partner directory</h2>
+    <p class="lead">Listed apps appear as one-click cards in every clinic's <em>Admin Settings → Apps</em>. Here's the ladder from first line of code to listed.</p>
+
+    <div class="cols" style="margin-bottom:22px">
+      <div class="card"><h3>1 · Build</h3><p>Load the script, wire <code>provide</code> and <code>subscribe</code>, prove it in the <a href="../vendor-sandbox/">sandbox</a>. No one from Comprehend needs to be involved.</p></div>
+      <div class="card"><h3>2 · Pilot</h3><p>One clinic that wants you registers your launch URL directly under Admin Settings → Apps, confirms their BAA with you, and enables it. You're live for that group.</p></div>
+      <div class="card"><h3>3 · Listed</h3><p>Open a PR adding yourself to <code>partners.json</code> in <a href="https://github.com/jake-comprehendpt/comprehend-apps">comprehend-apps</a>. We review the checklist below; merged means every clinic admin sees your card.</p></div>
+      <div class="card"><h3>4 · Featured</h3><p>Apps that clinics actually use get called out to clinics that don't have them yet. Earned, not bought.</p></div>
+    </div>
+
+    <h3 style="margin:0 0 6px">Listing review checklist</h3>
+    <ul class="fine">
+      <li>Loads <code>comprehend.js</code> from <code>app.comprehendpt.com</code> — no vendored copy.</li>
+      <li>Launch URL is <code>https</code>, on the declared origin, framable by <code>https://app.comprehendpt.com</code>.</li>
+      <li>Calls <code>provide</code> with <code>patientId</code>, <code>patientName</code> and a stable <code>patientRef</code>; opens the linked chart when <code>patient.ref</code> is present; handles <code>patient</code> being <code>null</code>.</li>
+      <li>Shows the Comprehend patient name next to your open chart so a mismatch is visible.</li>
+      <li>Subscriptions are declared once, not re-subscribed on every render; structure ≤ 200 leaves.</li>
+      <li>You have a BAA template ready to sign with clinics and a page (<code>docs</code>) that tells a clinic admin how to get it.</li>
+    </ul>
+    <p class="fine">A listing means <strong>we</strong> reviewed those points. It never stands in for a clinic's BAA with you — every clinic still confirms its own before enabling.</p>
+
+    <h3 style="margin:22px 0 6px">Listed partners</h3>
+    <div class="cols" id="partnerCards"><div class="card"><p>Loading…</p></div></div>
+  </section>
+
   <footer>
     Questions, or want to be an early partner? <a href="mailto:partners@comprehendpt.ai">partners@comprehendpt.ai</a> · <a href="https://comprehendpt.com">comprehendpt.com</a>
   </footer>
 </div>
+<script>
+  // Partner directory: same JSON the product reads. Empty is honest — the
+  // section still shows the ladder and the review criteria.
+  (async function () {
+    const el = document.getElementById('partnerCards');
+    const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    try {
+      const rsp = await fetch('./partners.json', { cache: 'no-cache' });
+      const json = await rsp.json();
+      const list = (json.partners || []).filter((p) => p && p.name && /^https:/.test(p.launchUrl || ''));
+      if (!list.length) {
+        el.innerHTML = '<div class="card"><h3>Nobody yet</h3><p>The directory opens with the first pilots. Build in the sandbox, run a pilot, then open the PR — the criteria above are the whole review.</p></div>';
+        return;
+      }
+      el.innerHTML = list.map((p) => `
+        <div class="card">
+          <h3>${p.logo ? `<img src="${esc(p.logo)}" alt="" width="20" height="20" style="vertical-align:-4px;margin-right:6px;border-radius:4px">` : ''}${esc(p.name)}${p.verified ? ' <span style="font-size:11px;color:var(--brand);border:1px solid var(--brand);border-radius:999px;padding:1px 7px;vertical-align:2px">verified</span>' : ''}</h3>
+          <p>${esc(p.blurb)}</p>
+          <p style="margin-top:8px;font-size:13px">${p.website ? `<a href="${esc(p.website)}">Website</a>` : ''}${p.website && p.docs ? ' · ' : ''}${p.docs ? `<a href="${esc(p.docs)}">Integration &amp; BAA</a>` : ''}</p>
+        </div>`).join('');
+    } catch (e) {
+      el.innerHTML = '<div class="card"><p>Directory unavailable right now.</p></div>';
+    }
+  })();
+</script>
 </body>
 </html>

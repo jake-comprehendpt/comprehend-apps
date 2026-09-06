@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Example vendor app — Force plate</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 0; color: #111827; background: #0b1220; }
+  header { background: #111a2e; color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #1f2a44; }
+  header small { opacity: .8; }
+  main { display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 16px; color: #e5e7eb; }
+  select { width: 100%; padding: 8px; background: #111a2e; color: #fff; border: 1px solid #334155; border-radius: 6px; }
+  .card { background: #111a2e; border: 1px solid #1f2a44; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+  .metric { display: inline-block; min-width: 120px; margin: 4px 12px 4px 0; }
+  .metric b { display: block; font-size: 20px; }
+  .metric.bad b { color: #f87171; }
+  pre { background: #0b1220; padding: 8px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; margin: 0; color: #a7f3d0; }
+  .log div { font-family: ui-monospace, monospace; font-size: 11px; color: #94a3b8; }
+</style>
+</head>
+<body>
+<header><b>Example Force Plate</b><small id="link">not connected to Comprehend</small></header>
+<main>
+  <aside>
+    <label>Athlete / patient<br><select id="pick"><option value="">—</option></select></label>
+    <p style="font-size:12px;color:#94a3b8;margin-top:12px">Pick the same patient Comprehend has open. The first <code>provide</code> links the two ids; next visit this selects itself.</p>
+  </aside>
+  <section>
+    <div class="card"><h3>Latest test</h3><div id="metrics">—</div></div>
+    <div class="card"><h3>From today's visit</h3><pre id="answers">waiting for Comprehend…</pre></div>
+    <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
+  </section>
+</main>
+
+<!-- On your own site use the absolute URL: https://app.comprehendpt.com/comprehend.js -->
+<script src="../comprehend.js"></script>
+<script>
+  const ROSTER = [
+    { id: 'V-77', name: 'Kim, Ann',     test: 'CMJ', date: '2026-09-04', jump: 31.2, asym: 14, note: 'L quad deficit' },
+    { id: 'V-78', name: 'Smith, Robert', test: 'CMJ', date: '2026-09-05', jump: 27.9, asym: 6,  note: 'within normal' },
+  ];
+  let current = null;
+  const $ = (id) => document.getElementById(id);
+  const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
+
+  $('pick').innerHTML += ROSTER.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  $('pick').addEventListener('change', () => { current = ROSTER.find(p => p.id === $('pick').value) || null; render(); sync(); });
+
+  function render() {
+    $('metrics').innerHTML = current ? `
+      <span class="metric"><small>${current.test} · ${current.date}</small><b>${current.jump} cm</b></span>
+      <span class="metric ${current.asym > 10 ? 'bad' : ''}"><small>asymmetry</small><b>${current.asym}%</b></span>
+      <span class="metric"><small>note</small><b style="font-size:14px">${current.note}</b></span>` : '—';
+    const ours = comprehend.patient;
+    $('link').textContent = !comprehend.ready ? 'not connected to Comprehend' : !ours ? 'Comprehend: no chart open'
+      : `Comprehend: ${ours.name}${ours.ref ? ' · linked ' + ours.ref : ''}`;
+  }
+
+  function sync() {
+    const theirs = comprehend.patient;
+    if (!theirs || !current) return;
+    comprehend.provide(`## Force plate — ${current.test} ${current.date}
+- Jump height: ${current.jump} cm
+- L/R asymmetry: ${current.asym}% ${current.asym > 10 ? '(above 10% threshold)' : ''}
+- Tester note: ${current.note}`, { patientId: theirs.id, patientName: current.name, patientRef: current.id });
+    log(`provide → ${theirs.id} as "${current.name}" ref ${current.id}`);
+  }
+
+  const onPatient = ({ patient }) => {
+    log(`comprehend patient → ${patient ? patient.name : 'none'}${patient && patient.ref ? ' (ref ' + patient.ref + ')' : ''}`);
+    if (patient && patient.ref) { current = ROSTER.find(p => p.id === patient.ref) || current; $('pick').value = current ? current.id : ''; }
+    render(); sync();
+  };
+  comprehend.on('ready', onPatient);
+  comprehend.on('patient', onPatient);
+
+  comprehend.subscribe({
+    tested_today: 'boolean — was a force plate / jump test performed or discussed today?',
+    side_of_concern: { _type: 'string', _choices: ['left', 'right', 'both', 'none stated'], _description: 'limb the PT was concerned about' },
+    plan_changes: 'string[] — changes to the plan of care the PT stated (progressions, holds, referrals)',
+  }, ({ patientId, answers, contextVersion }) => {
+    if (comprehend.patient && comprehend.patient.id !== patientId) return;
+    $('answers').textContent = `v${contextVersion}\n` + JSON.stringify(answers, null, 2);
+    log(`answers ← v${contextVersion}`);
+  }, (err) => { $('answers').textContent = `${err.code}: ${err.message}`; log(`error ← ${err.code}`); });
+
+  render();
+</script>
+</body>
+</html>

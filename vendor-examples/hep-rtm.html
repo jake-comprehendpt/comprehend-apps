@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Example vendor app — HEP / RTM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 0; color: #1f2937; background: #f8fafc; }
+  header { background: #0f766e; color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  header b { font-size: 15px; }
+  header small { opacity: .85; }
+  main { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px; }
+  .roster button { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 6px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+  .roster button.active { border-color: #0f766e; background: #ecfdf5; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #e5e7eb; }
+  .pill.ok { background: #d1fae5; color: #065f46; }
+  .pill.warn { background: #fee2e2; color: #991b1b; }
+  pre { background: #f3f4f6; padding: 8px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; margin: 0; }
+  .log div { font-family: ui-monospace, monospace; font-size: 11px; color: #4b5563; }
+</style>
+</head>
+<body>
+<header>
+  <b>Example HEP app</b>
+  <small id="link">not connected to Comprehend</small>
+</header>
+<main>
+  <aside class="roster" id="roster"></aside>
+  <section>
+    <div class="card">
+      <h3>Home program — last 7 days</h3>
+      <div id="summary"></div>
+    </div>
+    <div class="card">
+      <h3>From today's visit <span class="pill" id="pushState">waiting for Comprehend</span></h3>
+      <pre id="answers">—</pre>
+    </div>
+    <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
+  </section>
+</main>
+
+<!-- On your own site use the absolute URL: https://app.comprehendpt.com/comprehend.js -->
+<script src="../comprehend.js"></script>
+<script>
+  // ---- the vendor's own world: a roster and adherence data ----------------
+  const ROSTER = [
+    { id: 'L-1001', name: 'Ann Kim',   adherence: '5/7', pain: '6 → 3', flagged: 'skipped hip hinge ×3 (reports knee pain)' },
+    { id: 'L-1002', name: 'Bob Smith', adherence: '2/7', pain: '4 → 5', flagged: 'no sessions since Tuesday' },
+    { id: 'L-1003', name: 'Kate Nguyen', adherence: '7/7', pain: '2 → 1', flagged: 'none' },
+  ];
+  let current = null;
+
+  const $ = (id) => document.getElementById(id);
+  const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
+
+  function render() {
+    $('roster').innerHTML = ROSTER.map(p =>
+      `<button class="${current && current.id === p.id ? 'active' : ''}" data-id="${p.id}">${p.name}<br><small>${p.id}</small></button>`).join('');
+    $('summary').innerHTML = current
+      ? `<div><b>${current.name}</b> · adherence ${current.adherence} · pain ${current.pain}<br>Flagged: ${current.flagged}</div>`
+      : '<em>Select a patient</em>';
+    const ours = comprehend.patient;
+    $('link').textContent = !comprehend.ready ? 'not connected to Comprehend'
+      : !ours ? 'Comprehend: no chart open'
+      : `Comprehend: ${ours.name}${ours.ref ? ' · linked ' + ours.ref : ''}`;
+  }
+  $('roster').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    openChart(ROSTER.find(p => p.id === b.dataset.id));
+  });
+
+  function openChart(p) { current = p; render(); sync(); }
+
+  // ---- the contract: 1) provide whenever both sides have a chart open -----
+  function sync() {
+    const theirs = comprehend.patient;
+    if (!theirs || !current) return;
+    const md = `## HEP app — last 7 days for ${current.name}
+- Adherence: ${current.adherence} sessions
+- Pain trend (self-reported): ${current.pain}
+- Flagged: ${current.flagged}`;
+    comprehend.provide(md, { patientId: theirs.id, patientName: current.name, patientRef: current.id });
+    log(`provide → patientId=${theirs.id} patientName="${current.name}" patientRef=${current.id}`);
+  }
+
+  comprehend.on('ready', ({ patient }) => { log(`ready · Comprehend has ${patient ? patient.name : 'no chart'}`); onComprehendPatient(patient); });
+  comprehend.on('patient', ({ patient }) => { log(`patient → ${patient ? patient.name : 'none'}`); onComprehendPatient(patient); });
+
+  function onComprehendPatient(patient) {
+    if (patient && patient.ref) {
+      const mine = ROSTER.find(p => p.id === patient.ref);       // linked before → zero clicks
+      if (mine) { current = mine; }
+    }
+    render(); sync();
+  }
+
+  // ---- 2) subscribe once; Comprehend pushes when the clinician acts -------
+  comprehend.subscribe({
+    rtm_mentioned: 'boolean — was RTM / remote monitoring discussed today?',
+    pain: {
+      now:  { _type: 'number', _description: 'pain the patient reported today, 0-10, or null' },
+      site: { _type: 'string', _description: 'primary painful region as the PT named it' },
+    },
+    hep_changes: [{
+      exercise: { _description: 'exercise name as the PT said it' },
+      action:   { _choices: ['added', 'removed', 'modified', 'kept'] },
+      dosage:   { _description: 'sets x reps or time, if stated' },
+    }],
+  }, ({ patientId, answers, contextVersion, partial }) => {
+    if (comprehend.patient && comprehend.patient.id !== patientId) { log(`stale push for ${patientId} ignored`); return; }
+    $('pushState').textContent = `v${contextVersion}${partial ? ' (partial)' : ''}`; $('pushState').className = 'pill ok';
+    $('answers').textContent = JSON.stringify(answers, null, 2);
+    log(`answers ← v${contextVersion}`);
+  }, (err) => { $('pushState').textContent = err.code; $('pushState').className = 'pill warn'; log(`error ← ${err.code}: ${err.message}`); });
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Build on Comprehend</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Put your product's data in the clinical note, and get what was said in the visit back. One script, two calls, no account needed to start." />
+<style>
+  :root { --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --bg:#ffffff; --soft:#f8fafc; --brand:#0f766e; --brand-ink:#ecfdf5; }
+  * { box-sizing:border-box; }
+  body { margin:0; font: 16px/1.55 -apple-system, system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  a { color:var(--brand); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 22px; }
+  nav { display:flex; align-items:center; gap:18px; padding:16px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  nav b { font-size:16px; margin-right:auto; }
+  nav a { text-decoration:none; color:var(--muted); }
+  .hero { padding: 56px 0 28px; }
+  .hero h1 { font-size: 40px; line-height:1.1; margin:0 0 14px; letter-spacing:-.02em; }
+  .hero p { font-size: 19px; color:var(--muted); max-width: 680px; margin: 0 0 22px; }
+  .cta { display:inline-block; padding:11px 16px; border-radius:8px; background:var(--brand); color:#fff; text-decoration:none; font-weight:600; margin-right:10px; }
+  .cta.ghost { background:var(--brand-ink); color:var(--brand); }
+  section { padding: 34px 0; border-top:1px solid var(--line); }
+  h2 { font-size: 24px; margin: 0 0 8px; letter-spacing:-.01em; }
+  .lead { color:var(--muted); margin:0 0 20px; }
+  .cols { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px; }
+  .card { background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card h3 { margin:0 0 6px; font-size:16px; }
+  .card p { margin:0; color:var(--muted); font-size:15px; }
+  .step { display:grid; grid-template-columns: 34px 1fr; gap:14px; margin-bottom:22px; }
+  .num { width:34px; height:34px; border-radius:50%; background:var(--brand-ink); color:var(--brand); font-weight:700; display:flex; align-items:center; justify-content:center; }
+  pre { background:#0b1220; color:#e2e8f0; border-radius:10px; padding:14px 16px; overflow:auto; font-size:13px; line-height:1.5; margin:10px 0 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  p code, li code, td code { background:var(--soft); padding:1px 5px; border-radius:4px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+  .fine { font-size:14px; color:var(--muted); }
+  footer { padding: 30px 0 50px; color:var(--muted); font-size:14px; border-top:1px solid var(--line); }
+  .k { color:#7dd3fc; } .s { color:#fca5a5; } .c { color:#94a3b8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <b>Comprehend · Apps</b>
+    <a href="#how">How it works</a>
+    <a href="#contract">Contract</a>
+    <a href="#trust">Trust</a>
+    <a href="#start">Start building</a>
+    <a href="../vendor-sandbox/">Sandbox</a>
+  </nav>
+
+  <div class="hero">
+    <h1>Put your data in the note.<br>Get the visit back.</h1>
+    <p>Comprehend is the ambient documentation platform physical therapists use to turn the visit into the note. Your product knows what happened outside the room — home exercise, remote monitoring, force plates, outcomes. Comprehend knows what was said inside it. Apps connect the two.</p>
+    <a class="cta" href="../vendor-sandbox/">Open the sandbox</a>
+    <a class="cta ghost" href="#start">Start building</a>
+    <p class="fine" style="margin-top:14px">No account, no SDK install, no npm. One hosted script and two calls. Test against <code>localhost</code> in the sandbox before you talk to anyone.</p>
+  </div>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p class="lead">Your app runs inside Comprehend as an iframe, next to the clinician's note. A hosted script gives it a <code>comprehend</code> object.</p>
+
+    <div class="step"><div class="num">1</div><div>
+      <h3 style="margin:4px 0">Load the script</h3>
+      <p class="fine">On the page you want to embed. Vanilla JS; works in any framework.</p>
+      <pre><code>&lt;script src="https://app.comprehendpt.com/comprehend.js"&gt;&lt;/script&gt;</code></pre>
+    </div></div>
+
+    <div class="step"><div class="num">2</div><div>
+      <h3 style="margin:4px 0">Provide — tell Comprehend what you know</h3>
+      <p class="fine">Whenever a chart is open on your side and on ours, hand over a short markdown summary. It becomes context for that patient's note, attributed to you. Include our patient id and your patient's name — that first call is also what links the two records.</p>
+      <pre><code><span class="c">// run this on our 'ready' and 'patient' events, and whenever the clinician changes charts in YOUR app</span>
+<span class="k">function</span> sync() {
+  <span class="k">const</span> theirs = comprehend.patient;          <span class="c">// { id, name, dob, ref } or null</span>
+  <span class="k">const</span> mine   = myApp.currentPatient;
+  <span class="k">if</span> (!theirs || !mine) <span class="k">return</span>;
+  comprehend.provide(<span class="s">`## Home program — last 7 days
+- Adherence: 5/7 sessions
+- Pain trend: 6 → 3`</span>, { patientId: theirs.id, patientName: mine.fullName, patientRef: mine.id });
+}
+comprehend.on(<span class="s">'ready'</span>, sync);
+comprehend.on(<span class="s">'patient'</span>, ({ patient }) =&gt; { <span class="k">if</span> (patient?.ref) myApp.openChart(patient.ref); sync(); });
+myApp.on(<span class="s">'chartOpened'</span>, sync);</code></pre>
+    </div></div>
+
+    <div class="step"><div class="num">3</div><div>
+      <h3 style="margin:4px 0">Subscribe — ask the visit</h3>
+      <p class="fine">Declare what you want to know, in the shape you want it back. Comprehend answers from the live encounter when the clinician acts — chart open, note generated, or "Refresh apps" — and pushes the result to you. Booleans come back as booleans.</p>
+      <pre><code>comprehend.subscribe({
+  rtm_mentioned: <span class="s">'boolean — was remote monitoring discussed today?'</span>,
+  pain: { now: { _type: <span class="s">'number'</span>, _description: <span class="s">'pain reported today, 0-10, or null'</span> } },
+  hep_changes: [{
+    exercise: { _description: <span class="s">'exercise name as the PT said it'</span> },
+    action:   { _choices: [<span class="s">'added'</span>, <span class="s">'removed'</span>, <span class="s">'modified'</span>, <span class="s">'kept'</span>] },
+  }],
+}, ({ patientId, answers }) =&gt; render(patientId, answers));</code></pre>
+    </div></div>
+
+    <div class="cols" style="margin-top:8px">
+      <div class="card"><h3>Nothing to gate on</h3><p>Calls made before the handshake are queued and flushed. No <code>ready</code> boilerplate.</p></div>
+      <div class="card"><h3>Typed, nested, lists</h3><p>Structures support nesting, enums (<code>_choices</code>), lists sized to the transcript, and <code>boolean / number / string / string[] / number[]</code>.</p></div>
+      <div class="card"><h3>Push, not poll</h3><p>You never ask on a timer. We compute when the clinician acts and cache when nothing changed.</p></div>
+    </div>
+  </section>
+
+  <section id="contract">
+    <h2>The contract</h2>
+    <p class="lead">Three surfaces, two events. That's the whole API.</p>
+    <table>
+      <tr><th>Call</th><th>What it does</th></tr>
+      <tr><td><code>comprehend.provide(markdown, { patientId, patientName, patientRef })</code></td><td>Replaces your buffer for that patient. Markdown only, ≤ 8 KB. <code>patientId</code> is ours (from <code>comprehend.patient</code>), <code>patientName</code> is the name of the patient open in <em>your</em> app, <code>patientRef</code> is your id — we store it and hand it back as <code>patient.ref</code> on every later visit.</td></tr>
+      <tr><td><code>comprehend.patient</code></td><td><code>{ id, name, dob, ref }</code> or <code>null</code> when no chart is open. <code>ref</code> is your id if this patient has been linked before.</td></tr>
+      <tr><td><code>comprehend.subscribe(structure, onAnswers, onError?)</code></td><td>Registers a question structure; returns <code>unsubscribe()</code>. Pushes <code>{ patientId, answers, contextVersion, answeredAt, partial?, errors? }</code>. Up to 10 live subscriptions, 200 leaves each.</td></tr>
+      <tr><td><code>comprehend.on('ready' | 'patient', fn)</code></td><td><code>ready</code> once per load; <code>patient</code> when the clinician switches charts. Both carry <code>{ patient }</code>.</td></tr>
+    </table>
+    <h3 style="margin:22px 0 6px">Errors you can receive</h3>
+    <table>
+      <tr><td><code>PATIENT_MISMATCH</code> · <code>NOT_OPEN</code></td><td>Your <code>provide</code> named a patient whose chart is no longer open. Dropped. A slow fetch for the previous patient can never land in the current one.</td></tr>
+      <tr><td><code>PATIENT_MISMATCH</code> · <code>NAME_MISMATCH</code></td><td>Your <code>patientName</code> doesn't resemble the name on our chart. Buffer <em>and</em> link are rejected; the clinician sees both names.</td></tr>
+      <tr><td><code>BAD_STRUCTURE</code></td><td>Unknown <code>_type</code>, malformed leaf, or too large (<code>reason: 'TOO_LARGE'</code>).</td></tr>
+      <tr><td><code>NO_ENCOUNTER</code> · <code>TOO_MANY_SUBSCRIPTIONS</code> · <code>NOT_REGISTERED</code> · <code>TIMEOUT</code></td><td>As named.</td></tr>
+    </table>
+  </section>
+
+  <section id="trust">
+    <h2>Trust model</h2>
+    <div class="cols">
+      <div class="card"><h3>Clinician-initiated, always</h3><p>Answers are computed inside the clinician's session, on their action. Never on a timer, never from your servers. Closing the tab ends access.</p></div>
+      <div class="card"><h3>Identity is the origin</h3><p>A clinic admin registers your app's exact origin. We accept messages only from that origin, from the frame we created. No tokens for you to manage.</p></div>
+      <div class="card"><h3>Linking is a human act</h3><p>Nobody fuzzy-matches names. The clinician opens the same patient in both places; your first <code>provide</code> is the link, and we check the names resemble each other before we accept it.</p></div>
+      <div class="card"><h3>BAA before anything loads</h3><p>A clinic admin cannot enable your app until they confirm their organization holds a signed BAA with you — and they're told exactly what they're sharing. Your page never loads, and never receives a patient name, before that. Have your BAA ready.</p></div>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>Start building</h2>
+    <div class="cols">
+      <div class="card"><h3>1 · Sandbox</h3><p>A fake Comprehend around your real app: two fake patients, canned encounters, mock answers in the shape you asked for, and a log of every message across the frame. Point it at <code>localhost</code>. <a href="../vendor-sandbox/">Open →</a></p></div>
+      <div class="card"><h3>2 · Examples</h3><p>Two small pages that exercise the whole contract: a <a href="../vendor-examples/hep-rtm.html">home-exercise / RTM app</a> and a <a href="../vendor-examples/force-plate.html">force-plate app</a>. View source; copy freely.</p></div>
+      <div class="card"><h3>3 · Go live with a clinic</h3><p>When a clinic wants you, their admin registers your launch URL under <em>Admin Settings → Apps</em>, confirms they hold a BAA with you, and enables it. Every clinician in that group sees you in their Apps tab.</p></div>
+    </div>
+
+    <h3 style="margin:26px 0 6px">Give clinicians a button</h3>
+    <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens the registration form pre-filled for their admin — or tells a non-admin who to ask.</p>
+    <pre><code>&lt;a href="https://app.comprehendpt.com/User/apps?add=https%3A%2F%2Fapp.example.com%2Fcomprehend"&gt;Add to Comprehend&lt;/a&gt;</code></pre>
+
+    <h3 style="margin:26px 0 6px">Requirements</h3>
+    <ul class="fine">
+      <li>Your launch URL must be <code>https</code> and framable by <code>https://app.comprehendpt.com</code> (no <code>X-Frame-Options: DENY</code>; set <code>frame-ancestors</code> accordingly).</li>
+      <li>We append <code>?comprehend=1</code> to the launch URL so you can render an embedded layout.</li>
+      <li>Load the script from <code>https://app.comprehendpt.com/comprehend.js</code> — don't vendor a copy; it pins the host origin and evolves with the contract.</li>
+      <li>Handle <code>patient</code> being <code>null</code> and <code>ref</code> being absent. Show "Comprehend: Ann K." next to your open chart so a mismatch is visible.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Questions, or want to be an early partner? <a href="mailto:partners@comprehendpt.ai">partners@comprehendpt.ai</a> · <a href="https://comprehendpt.com">comprehendpt.com</a>
+  </footer>
+</div>
+</body>
+</html>

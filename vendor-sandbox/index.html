@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Comprehend Apps — Sandbox</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --brand:#0f766e; --warn:#b45309; --bad:#b91c1c; --ok:#047857; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 14px/1.45 -apple-system, system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; gap:14px; padding:10px 18px; background:#fff; border-bottom:1px solid var(--line); }
+  header b { font-size:15px; } header small { color:var(--muted); }
+  header a { margin-left:auto; color:var(--brand); text-decoration:none; font-size:13px; }
+  main { display:grid; grid-template-columns: 340px 1fr; gap:14px; padding:14px 18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h3 { margin:0 0 8px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; }
+  input[type=text], input[type=url] { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px; font: inherit; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; }
+  button { padding:6px 10px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font: inherit; font-size:13px; }
+  button.primary { background:var(--brand); color:#fff; border-color:var(--brand); }
+  button.on { background:#ecfdf5; border-color:var(--brand); color:var(--brand); }
+  button:disabled { opacity:.5; cursor:default; }
+  .frame { height: 56vh; min-height: 380px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }
+  iframe { width:100%; height:100%; border:0; }
+  .status { font-size:12px; color:var(--muted); margin-top:6px; }
+  .status.bad { color:var(--bad); } .status.ok { color:var(--ok); }
+  pre { margin:0; background:var(--bg); border-radius:6px; padding:8px; font-size:12px; white-space:pre-wrap; max-height:220px; overflow:auto; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .log div { font:11px/1.5 ui-monospace, monospace; color:#475569; }
+  .log .out { color:var(--brand); } .log .in { color:#1d4ed8; } .log .err { color:var(--bad); }
+  details summary { cursor:pointer; font-size:12px; }
+  .pill { display:inline-block; font-size:11px; padding:1px 7px; border-radius:999px; background:#e2e8f0; margin-left:6px; }
+  .pill.ok { background:#d1fae5; color:var(--ok); }
+  code { font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <b>Comprehend Apps · Sandbox</b>
+  <small>A fake Comprehend around your real app. No account, no PHI, no backend.</small>
+  <a href="../developers/">← Developer guide</a>
+</header>
+<main>
+  <aside>
+    <div class="card">
+      <h3>Your app</h3>
+      <label>Launch URL (localhost is fine)</label>
+      <input type="url" id="target" placeholder="http://localhost:5173/comprehend" />
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="load">Load</button>
+        <button id="loadExample" title="Loads the HEP / RTM example that ships with Comprehend">Load example app</button>
+      </div>
+      <div class="status" id="targetStatus">Not loaded. We pin <code>event.origin</code> to your URL's origin, exactly like production.</div>
+    </div>
+
+    <div class="card">
+      <h3>Fake chart — what Comprehend has open</h3>
+      <div class="row" id="patients"></div>
+      <label>Canned encounter (drives mock answers)</label>
+      <div class="row" id="scenarios"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="bump" title="Simulates new transcript content: contextVersion +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
+        <button id="refresh">Refresh apps</button>
+      </div>
+      <div class="status">Production evaluates on clinician action only — chart open, note generate, Refresh apps. Same here.</div>
+    </div>
+
+    <div class="card">
+      <h3>Link state</h3>
+      <div class="status" id="linkStatus">—</div>
+      <div class="row" style="margin-top:8px"><button id="clearRefs">Forget links</button></div>
+    </div>
+  </aside>
+
+  <section>
+    <div class="frame"><iframe id="frame" title="Your app" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads" allow="clipboard-write" referrerpolicy="origin"></iframe></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card">
+        <h3>Buffer <small id="bufferMeta"></small></h3>
+        <pre id="buffer">nothing provided for this patient</pre>
+      </div>
+      <div class="card">
+        <h3>Subscriptions <span class="pill" id="subCount">0</span></h3>
+        <div id="subs"><div class="status">none yet</div></div>
+      </div>
+    </div>
+    <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  // ---------------------------------------------------------------------
+  // A faithful, dependency-free copy of the production host rules
+  // (docs/vendor-apps-contract.md): origin + source pinning, NOT_OPEN and
+  // NAME_MISMATCH on provide, ≤10 subscriptions, evaluate on action only,
+  // cache by structure+contextVersion, patientId on every push.
+  // Answers are mocked from your structure's declared types + the scenario.
+  // ---------------------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  const PATIENTS = [
+    { id: 'sbx-p1', name: 'Ann Kim', dob: '1980-04-02' },
+    { id: 'sbx-p2', name: 'Bob Smith', dob: '1972-11-19' },
+  ];
+  const SCENARIOS = [['rtm', 'RTM discussed'], ['hep', 'HEP changed'], ['none', 'Nothing relevant']];
+  const MAX_SUBS = 10, MAX_BUFFER = 8 * 1024;
+  const REFS_KEY = 'comprehend_sandbox_refs';
+
+  const state = {
+    origin: null, patient: PATIENTS[0], scenario: 'rtm', contextVersion: 0, ready: false,
+    buffers: new Map(),      // patientId -> {markdown, patientName, patientRef, providedAt}
+    subs: new Map(),         // id -> {structure, types, lastKey, lastAnswers}
+    refs: JSON.parse(localStorage.getItem(REFS_KEY) || '{}'),
+  };
+  const frame = $('frame');
+
+  // ---- log ---------------------------------------------------------------
+  function log(kind, msg) {
+    const d = document.createElement('div'); d.className = kind;
+    d.textContent = `${new Date().toLocaleTimeString()} ${kind === 'out' ? '→ app' : kind === 'in' ? '← app' : '  ✗'} ${msg}`;
+    $('log').prepend(d);
+  }
+
+  // ---- name resemblance (same rules as namesResemble.js) -----------------
+  const strip = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z\s-]/g, ' ').replace(/[-\s]+/g, ' ').trim();
+  function parseName(n) {
+    if (n && typeof n === 'object') return { first: strip(n.first).split(' ').filter(Boolean), last: strip(n.last).split(' ').filter(Boolean) };
+    const raw = String(n || '');
+    if (raw.includes(',')) { const [l, f] = raw.split(','); return { first: strip(f).split(' ').filter(Boolean), last: strip(l).split(' ').filter(Boolean) }; }
+    const t = strip(raw).split(' ').filter(Boolean);
+    if (!t.length) return { first: [], last: [] };
+    if (t.length === 1) return { first: [], last: t };
+    return { first: t.slice(0, -1), last: t.slice(-1) };
+  }
+  function editDistance(a, b) { const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j); for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; } return prev[n]; }
+  function tokensResemble(a, b, allowPrefix) {
+    if (!a || !b) return false; if (a === b) return true;
+    const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+    if (allowPrefix) { if (s.length === 1) return l.startsWith(s); if (s.length >= 3 && l.startsWith(s)) return true; }
+    const allowed = l.length >= 7 ? 2 : l.length >= 4 ? 1 : 0;
+    return editDistance(a, b) <= allowed;
+  }
+  const anyPair = (as, bs, p) => as.some((a) => bs.some((b) => tokensResemble(a, b, p)));
+  function namesResemble(ours, theirs) {
+    const o = parseName(ours), t = parseName(theirs);
+    if (!o.last.length || !t.last.length) return false;
+    if (!anyPair(o.last, t.last, false)) return false;
+    if (!o.first.length || !t.first.length) return false;
+    return anyPair(o.first, t.first, true);
+  }
+
+  // ---- structure → types (mirrors flexCompile) ---------------------------
+  const TYPES = ['boolean', 'number', 'string', 'string[]', 'number[]'];
+  const SHORTHAND = /^\s*(boolean|number|string|string\[\]|number\[\])\s+[—–-]\s+([\s\S]*)$/;
+  const isLeafObj = (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((k) => k[0] === '_');
+  function typesOf(structure) {
+    const types = {};
+    (function walk(node, path) {
+      if (typeof node === 'string') { const m = node.match(SHORTHAND); types[path] = m ? m[1] : 'string'; return; }
+      if (Array.isArray(node)) { node.forEach((row) => walk(row, path + '[]')); return; }
+      if (isLeafObj(node)) { types[path] = TYPES.includes(node._type) ? node._type : 'string'; return; }
+      for (const k of Object.keys(node || {})) if (k !== '_existingValue') walk(node[k], path ? path + '.' + k : k);
+    })(structure, '');
+    return types;
+  }
+  function mockAnswers(structure, types, scenario) {
+    const leaf = (path, type) => {
+      const k = path.toLowerCase(); const has = (w) => k.includes(w);
+      switch (type) {
+        case 'boolean': if (has('rtm') || has('remote')) return scenario === 'rtm'; if (has('hep') || has('exercise') || has('test')) return scenario !== 'none'; return false;
+        case 'number': if (has('pain')) return scenario === 'none' ? null : 4; return scenario === 'none' ? null : 3;
+        case 'string[]': if (has('hep') || has('exercise') || has('change')) return scenario === 'hep' ? ['sit-to-stand 3x12', 'bridge 2x10 (added)'] : []; return [];
+        case 'number[]': return scenario === 'none' ? [] : [3, 4];
+        default:
+          if (has('site') || has('region')) return scenario === 'none' ? null : 'left knee';
+          if (has('barrier') || has('reason')) return scenario === 'none' ? 'none' : 'pain';
+          if (has('action')) return 'modified';
+          if (has('exercise') || has('name')) return 'sit-to-stand';
+          if (has('dosage') || has('reps') || has('sets')) return '3x12';
+          if (has('side')) return scenario === 'none' ? 'none stated' : 'left';
+          return scenario === 'none' ? null : 'discussed briefly';
+      }
+    };
+    return (function walk(node, path) {
+      if (Object.prototype.hasOwnProperty.call(types, path)) return leaf(path, types[path]);
+      if (Array.isArray(node)) { if (scenario === 'none') return []; const n = scenario === 'hep' ? 2 : 1; return Array.from({ length: n }, () => walk(node[0], path + '[]')); }
+      if (node && typeof node === 'object') { const out = {}; for (const k of Object.keys(node)) if (k !== '_existingValue') out[k] = walk(node[k], path ? path + '.' + k : k); return out; }
+      return null;
+    })(structure, '');
+  }
+  const hash = (v) => { const s = JSON.stringify(v, Object.keys(flatten(v)).sort()); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+  function flatten(v, out = {}) { if (v && typeof v === 'object') for (const k of Object.keys(v)) { out[k] = 1; flatten(v[k], out); } return out; }
+
+  // ---- host → app ----------------------------------------------------------
+  function send(msg) { if (!state.origin || !frame.contentWindow) return; frame.contentWindow.postMessage(msg, state.origin); }
+  function patientForApp() { if (!state.patient) return null; return { ...state.patient, ref: state.refs[`${state.origin}:${state.patient.id}`] ?? null }; }
+  function sendReady() { state.ready = true; const p = patientForApp(); send({ type: 'comprehend:ready', appId: 'sandbox', patient: p, contextVersion: state.contextVersion }); log('out', `ready · patient=${p ? p.name : 'none'}${p && p.ref ? ' ref=' + p.ref : ''}`); }
+  function sendPatient() { const p = patientForApp(); send({ type: 'comprehend:patient', patient: p, contextVersion: state.contextVersion }); log('out', `patient → ${p ? p.name : 'none'}${p && p.ref ? ' ref=' + p.ref : ''}`); }
+  function sendError(id, code, message, reason) { send({ type: 'comprehend:error', id, code, reason, message }); log('err', `${code}${reason ? '/' + reason : ''}${id ? ' [' + id + ']' : ''}: ${message}`); }
+
+  function evaluate(reason, onlyId) {
+    if (!state.patient) { for (const id of state.subs.keys()) if (!onlyId || id === onlyId) sendError(id, 'NO_ENCOUNTER', 'no visit is open'); return; }
+    for (const [id, sub] of state.subs) {
+      if (onlyId && id !== onlyId) continue;
+      const key = `${sub.hash}|${state.contextVersion}|${state.patient.id}`;
+      let answers, cached = false;
+      if (sub.lastKey === key) { answers = sub.lastAnswers; cached = true; } else { answers = mockAnswers(sub.structure, sub.types, state.scenario); sub.lastKey = key; sub.lastAnswers = answers; }
+      send({ type: 'comprehend:answers', id, patientId: state.patient.id, answers, contextVersion: state.contextVersion, answeredAt: new Date().toISOString(), partial: false, errors: [] });
+      log('out', `answers [${id}] v${state.contextVersion} ${cached ? '(cached)' : '(' + reason + ', ' + state.scenario + ')'}`);
+    }
+    renderSubs();
+  }
+
+  // ---- app → host ----------------------------------------------------------
+  window.addEventListener('message', (event) => {
+    if (!state.origin || event.source !== frame.contentWindow) return;
+    if (event.origin !== state.origin) { log('err', `ignored message from ${event.origin} (pinned to ${state.origin})`); return; }
+    const msg = event.data; if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('comprehend:')) return;
+    switch (msg.type) {
+      case 'comprehend:provide': {
+        log('in', `provide patientId=${msg.patientId} patientName="${msg.patientName}" patientRef=${msg.patientRef ?? '—'} (${(msg.markdown || '').length} chars)`);
+        if (!state.patient) return sendError(undefined, 'NO_ENCOUNTER', 'no chart is open');
+        if (String(msg.patientId) !== state.patient.id) return sendError(undefined, 'PATIENT_MISMATCH', `provide was for ${msg.patientId}; open chart is ${state.patient.id}`, 'NOT_OPEN');
+        if (!namesResemble(state.patient.name, msg.patientName)) { state.lastMismatch = { theirs: msg.patientName, ours: state.patient.name }; renderLink(); return sendError(undefined, 'PATIENT_MISMATCH', `"${msg.patientName}" does not resemble the open chart "${state.patient.name}"`, 'NAME_MISMATCH'); }
+        let md = typeof msg.markdown === 'string' ? msg.markdown : ''; if (md.length > MAX_BUFFER) md = md.slice(0, MAX_BUFFER) + '\n\n_[truncated at 8 KB]_';
+        state.buffers.set(state.patient.id, { markdown: md, patientName: msg.patientName, patientRef: msg.patientRef ?? null, providedAt: new Date().toISOString() });
+        if (msg.patientRef != null) { state.refs[`${state.origin}:${state.patient.id}`] = String(msg.patientRef); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
+        state.lastMismatch = null; renderBuffer(); renderLink(); break;
+      }
+      case 'comprehend:subscribe': {
+        if (!msg.id) return;
+        if (!state.subs.has(msg.id) && state.subs.size >= MAX_SUBS) return sendError(msg.id, 'TOO_MANY_SUBSCRIPTIONS', `max ${MAX_SUBS} live subscriptions per app`);
+        const types = typesOf(msg.structure || {});
+        state.subs.set(msg.id, { structure: msg.structure, types, hash: hash(msg.structure), lastKey: null, lastAnswers: null });
+        log('in', `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
+        renderSubs(); evaluate('subscribe', msg.id); break;
+      }
+      case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
+    }
+  });
+
+  // ---- UI ----------------------------------------------------------------
+  function renderPatients() {
+    $('patients').innerHTML = PATIENTS.map((p) => `<button data-p="${p.id}" class="${state.patient && state.patient.id === p.id ? 'on' : ''}">${p.name}</button>`).join('') + `<button data-p="" class="${state.patient ? '' : 'on'}">None</button>`;
+    $('scenarios').innerHTML = SCENARIOS.map(([k, l]) => `<button data-s="${k}" class="${state.scenario === k ? 'on' : ''}">${l}</button>`).join('');
+    $('cv').textContent = 'v' + state.contextVersion;
+  }
+  function renderBuffer() {
+    const b = state.patient ? state.buffers.get(state.patient.id) : null;
+    $('buffer').textContent = b ? b.markdown : 'nothing provided for this patient';
+    $('bufferMeta').textContent = b ? `— ${b.patientName} · ref ${b.patientRef ?? '—'} · ${new Date(b.providedAt).toLocaleTimeString()}` : '';
+  }
+  function renderSubs() {
+    $('subCount').textContent = state.subs.size;
+    $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${Object.keys(s.types).length} leaves ${s.lastAnswers ? '<span class="pill ok">answered</span>' : '<span class="pill">pending</span>'}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
+  }
+  function renderLink() {
+    const el = $('linkStatus'); el.className = 'status';
+    if (!state.origin) { el.textContent = 'Load your app first.'; return; }
+    if (state.lastMismatch) { el.className = 'status bad'; el.textContent = `Your app has "${state.lastMismatch.theirs}" open; Comprehend has "${state.lastMismatch.ours}". Not linked — buffer rejected.`; return; }
+    if (!state.patient) { el.textContent = 'No chart open in Comprehend.'; return; }
+    const ref = state.refs[`${state.origin}:${state.patient.id}`];
+    const b = state.buffers.get(state.patient.id);
+    if (b) { el.className = 'status ok'; el.textContent = `Comprehend: ${state.patient.name} ↔ your app: ${b.patientName}${ref ? ` · linked as ${ref}` : ' · no patientRef given'}`; }
+    else el.textContent = ref ? `Linked before as ${ref} — your app should open that chart on ready/patient.` : `Open ${state.patient.name} in your app to link.`;
+  }
+  const escapeHtml = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  function load(url) {
+    let u; try { u = new URL(url); } catch (e) { $('targetStatus').textContent = 'Enter a full URL, e.g. http://localhost:5173/'; $('targetStatus').className = 'status bad'; return; }
+    state.origin = u.origin; state.ready = false; state.subs.clear(); state.lastMismatch = null;
+    u.searchParams.set('comprehend', '1');
+    // comprehend.js pins app.comprehendpt.com; when this sandbox runs on localhost it
+    // must pin us instead. The script only ever honours localhost values here.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.origin)) u.searchParams.set('comprehend_host', location.origin);
+    else if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
+    frame.src = u.toString();
+    $('targetStatus').textContent = `Loaded. Accepting messages only from ${state.origin}.`; $('targetStatus').className = 'status ok';
+    localStorage.setItem('comprehend_sandbox_target', url);
+    renderSubs(); renderBuffer(); renderLink();
+  }
+  frame.addEventListener('load', () => { if (state.origin) sendReady(); });
+
+  $('load').onclick = () => load($('target').value.trim());
+  $('loadExample').onclick = () => { $('target').value = new URL('../vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
+  $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
+  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient(); evaluate('chart_open'); } });
+  $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.scenario = b.dataset.s; renderPatients(); });
+  $('bump').onclick = () => { state.contextVersion += 1; renderPatients(); log('out', `contextVersion → ${state.contextVersion} (cache invalidated; nothing pushed until an action)`); };
+  $('refresh').onclick = () => evaluate('refresh');
+  $('clearRefs').onclick = () => { state.refs = {}; localStorage.removeItem(REFS_KEY); renderLink(); log('out', 'links forgotten'); };
+
+  renderPatients(); renderBuffer(); renderSubs(); renderLink();
+  const remembered = localStorage.getItem('comprehend_sandbox_target'); if (remembered) $('target').value = remembered;
+})();
+</script>
+</body>
+</html>

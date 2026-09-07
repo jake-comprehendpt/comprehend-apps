@@ -18,12 +18,21 @@
   if (global.comprehend) return;
 
   var HOST_ORIGIN = 'https://app.comprehendpt.com';
-  // The host tells us where it lives when it isn't production: our dev site
-  // (dev.comprehendpt.com) or a localhost Dev Console / sandbox. Anything else
-  // is ignored and we keep pinning production.
+  // The host tells us where it lives when it isn't the production web app:
+  // our dev site, a localhost Dev Console / sandbox, or the Comprehend Chrome
+  // extension's side panel (an explicit allowlist of OUR extension ids — never
+  // any chrome-extension://, or another extension could pose as Comprehend to
+  // your page). Anything else is ignored and we keep pinning production.
+  var EXTENSION_HOSTS = [
+    'chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc' // Comprehend EMR Integration (desktop, Chrome Web Store)
+  ];
   var qs = new URLSearchParams(global.location.search);
   var altHost = qs.get('comprehend_host');
-  if (altHost && /^(https:\/\/dev\.comprehendpt\.com|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/.test(altHost)) {
+  if (
+    altHost &&
+    (/^(https:\/\/dev\.comprehendpt\.com|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/.test(altHost) ||
+      EXTENSION_HOSTS.indexOf(altHost) !== -1)
+  ) {
     HOST_ORIGIN = altHost;
   }
 

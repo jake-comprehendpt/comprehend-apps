@@ -88,7 +88,7 @@ comprehend.subscribe({
 
 The clinic admin registers your launch URL under *Admin Settings → Apps*, confirms the BAA, and enables it. Give clinicians a button: `https://app.comprehendpt.com/User/apps?add=<your https launch URL>` signs them in and pre-fills the form for their admin.
 
-Requirements: your launch URL is `https` and framable by `https://app.comprehendpt.com` (`frame-ancestors`); we append `?comprehend=1`; handle `patient` being `null` and `ref` being absent.
+Requirements: your launch URL is `https` and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc`; we append `?comprehend=1`; handle `patient` being `null` and `ref` being absent.
 
 ## Running the sandbox and examples locally
 

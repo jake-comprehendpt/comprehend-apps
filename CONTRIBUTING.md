@@ -13,7 +13,7 @@ Listed apps show up as one-click "Register" cards in every clinic's **Admin Sett
 We check every item; a PR that fails one gets a comment, not a merge.
 
 - Loads `comprehend.js` from `https://app.comprehendpt.com/comprehend.js` — no vendored copy.
-- Launch URL is `https`, on the declared `embedOrigin`, and framable by `https://app.comprehendpt.com` (`frame-ancestors`, no `X-Frame-Options: DENY`).
+- Launch URL is `https`, on the declared `embedOrigin`, and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc`, no `X-Frame-Options: DENY`.
 - Calls `provide` with `patientId`, `patientName`, and a stable `patientRef`; opens the linked chart when `patient.ref` is present; handles `patient` being `null`.
 - Shows the Comprehend patient name next to your open chart so a mismatch is visible to the clinician.
 - Declares subscriptions once (not on every render); each structure ≤ 200 leaves.

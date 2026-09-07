@@ -1,6 +1,6 @@
 # Build on Comprehend
 
-**Get in the room. Get in the chart.**
+**Your app in the room. Your data in the EMR.**
 
 Comprehend is the ambient AI that listens to the PT visit and writes the note inside the EMRs clinics already use (25+ of them). Bring your app in — as it is, your UI and your login, one script tag — and two things happen: what you know about the patient enters the note, attributed to you, in whatever EMR the clinic runs; and what happened in the room comes back to you, per patient, as the note is written — which exercises were performed, what was progressed or dropped, what the patient reported, the plan. RTM and HEP programs get documented the way billing needs along the way.
 

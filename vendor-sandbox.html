@@ -25,6 +25,7 @@
   iframe { width:100%; height:100%; border:0; }
   .status { font-size:12px; color:var(--muted); margin-top:6px; }
   .status.bad { color:var(--bad); } .status.ok { color:var(--ok); }
+  .toast { background:#fffbeb; border:1px solid #fcd34d; color:#92400e; border-radius:6px; padding:8px 10px; font-size:12px; margin-top:8px; }
   pre { margin:0; background:var(--bg); border-radius:6px; padding:8px; font-size:12px; white-space:pre-wrap; max-height:220px; overflow:auto; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .log div { font:11px/1.5 ui-monospace, monospace; color:#475569; }
@@ -49,18 +50,17 @@
       <input type="url" id="target" placeholder="http://localhost:5173/comprehend" />
       <div class="row" style="margin-top:8px">
         <button class="primary" id="load">Load</button>
-        <button id="loadExample" title="Loads the HEP / RTM example that ships with Comprehend">Load example app</button>
+        <button id="loadExample" title="Loads the HEP example that ships with Comprehend">Load example app</button>
       </div>
       <div class="status" id="targetStatus">Not loaded. We pin <code>event.origin</code> to your URL's origin, exactly like production.</div>
       <div id="framing" class="status" style="display:none"></div>
     </div>
 
     <div class="card">
-      <h3>Framing — what this sandbox can and can't verify</h3>
+      <h3>Framing — can Comprehend embed you?</h3>
       <div class="status">
         Comprehend embeds your page from <b>two</b> origins: the web app (<code>https://app.comprehendpt.com</code>) and the Chrome extension's side panel
-        (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). This sandbox is a web page, so it can only prove your page loads from
-        <code id="ourOrigin"></code>. It <b>cannot</b> impersonate the extension origin — check your headers for that:
+        (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). Loading you here proves the first from <code id="ourOrigin"></code>; the button checks both from our server.
       </div>
       <div class="row" style="margin-top:8px">
         <button class="primary" id="checkHeaders" title="Comprehend's server fetches your URL (HEAD, headers only) and evaluates frame-ancestors / X-Frame-Options for both origins">Check my headers</button>
@@ -78,15 +78,16 @@
       <label>Canned encounter (drives mock answers)</label>
       <div class="row" id="scenarios"></div>
       <div class="row" style="margin-top:10px">
-        <button id="bump" title="Simulates new transcript content: contextVersion +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
-        <button id="refresh">Refresh apps</button>
+        <button id="bump" title="Simulates new transcript content: version +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
+        <button id="refresh" title="What the clinician's 'Refresh apps' / note generation does: patient(refresh) to your app, then subscriptions are answered">Refresh apps</button>
       </div>
-      <div class="status">Production evaluates on clinician action only — chart open, note generate, Refresh apps. Same here.</div>
+      <div class="status">Production answers subscriptions on clinician action only — chart open, note generate, Refresh apps. Same here.</div>
     </div>
 
     <div class="card">
-      <h3>Link state</h3>
+      <h3>Link state <small>(what the clinician sees)</small></h3>
       <div class="status" id="linkStatus">—</div>
+      <div id="clinicianToast"></div>
       <div class="row" style="margin-top:8px"><button id="clearRefs">Forget links</button></div>
     </div>
   </aside>
@@ -95,8 +96,8 @@
     <div class="frame"><iframe id="frame" title="Your app" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads" allow="clipboard-write" referrerpolicy="origin"></iframe></div>
     <div class="grid2" style="margin-top:12px">
       <div class="card">
-        <h3>Buffer <small id="bufferMeta"></small></h3>
-        <pre id="buffer">nothing provided for this patient</pre>
+        <h3>Context <small id="bufferMeta"></small></h3>
+        <pre id="buffer">nothing set for this patient</pre>
       </div>
       <div class="card">
         <h3>Subscriptions <span class="pill" id="subCount">0</span></h3>
@@ -112,10 +113,10 @@
   'use strict';
   // ---------------------------------------------------------------------
   // A faithful, dependency-free copy of the production host rules
-  // (docs/vendor-apps-contract.md): origin + source pinning, NOT_OPEN and
-  // NAME_MISMATCH on provide, ≤10 subscriptions, evaluate on action only,
-  // cache by structure+contextVersion, patientId on every push.
-  // Answers are mocked from your structure's declared types + the scenario.
+  // (developers.html): origin + source pinning, STALE_PATIENT / CONTEXT_REJECTED
+  // on setContext (the clinician sees why; you only get the code), ≤10
+  // subscriptions, answers on clinician action only, cache by structure+version,
+  // patientId on every push. Answers are mocked from your declared types.
   // ---------------------------------------------------------------------
   const $ = (id) => document.getElementById(id);
   const PATIENTS = [
@@ -127,25 +128,29 @@
   const REFS_KEY = 'comprehend_sandbox_refs';
 
   const state = {
-    origin: null, patient: PATIENTS[0], scenario: 'rtm', contextVersion: 0, ready: false,
-    buffers: new Map(),      // patientId -> {markdown, patientName, patientRef, providedAt}
-    subs: new Map(),         // id -> {structure, types, lastKey, lastAnswers}
+    origin: null, patient: PATIENTS[0], scenario: 'rtm', contextVersion: 0, ready: false, gotMessage: false, lastMismatch: null,
+    buffers: new Map(),      // patientId -> {markdown, name, yourId, providedAt}
+    subs: new Map(),         // id -> {structure, types, hash, lastKey, lastAnswers}
     refs: JSON.parse(localStorage.getItem(REFS_KEY) || '{}'),
   };
   const frame = $('frame');
+  const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---- log ---------------------------------------------------------------
+  function log(kind, msg) {
+    const d = document.createElement('div'); d.className = kind;
+    d.textContent = `${new Date().toLocaleTimeString()} ${kind === 'out' ? '→ app' : kind === 'in' ? '← app' : '  ✗'} ${msg}`;
+    $('log').prepend(d);
+  }
 
   // ---- handshake watchdog ----------------------------------------------------
-  // If the frame loads but nothing ever arrives from your page, the two usual
-  // causes are: your server refused to be framed by THIS origin (X-Frame-Options
-  // / CSP frame-ancestors — the browser shows an error page we can't read), or
-  // comprehend.js isn't on the page / is pinning a different host origin.
   const HANDSHAKE_TIMEOUT_MS = 8000;
   let watchdog = null;
-  const framingEl = document.getElementById('framing');
-  document.getElementById('ourOrigin').textContent = location.origin;
+  const framingEl = $('framing');
+  $('ourOrigin').textContent = location.origin;
   function renderCurl() {
-    const url = state.origin ? ($('target').value.trim() || state.origin) : 'https://your-app.example/comprehend';
-    document.getElementById('framingCurl').textContent = `curl -sI "${url}" | grep -iE 'frame-ancestors|x-frame-options'`;
+    const url = $('target').value.trim() || 'https://your-app.example/comprehend';
+    $('framingCurl').textContent = `curl -sI "${url}" | grep -iE 'frame-ancestors|x-frame-options'`;
   }
   function startWatchdog() {
     clearTimeout(watchdog); framingEl.style.display = 'none'; state.gotMessage = false;
@@ -153,7 +158,7 @@
       if (state.gotMessage) return;
       framingEl.className = 'status bad'; framingEl.style.display = 'block';
       framingEl.innerHTML = `Frame loaded but your page never spoke to us in ${HANDSHAKE_TIMEOUT_MS / 1000}s. Most likely one of:<br>` +
-        `1. Your server refuses to be framed by <code>${location.origin}</code> — check <code>X-Frame-Options</code> / <code>frame-ancestors</code> (see the Framing card).<br>` +
+        `1. Your server refuses to be framed by <code>${location.origin}</code> — use <b>Check my headers</b>.<br>` +
         `2. <code>comprehend.js</code> isn't loaded on that page, or it's pinning a different host (we passed <code>?comprehend_host=${location.origin !== 'https://app.comprehendpt.com' ? location.origin : '(none, production)'}</code>).<br>` +
         `3. The page threw before subscribing — open its console.`;
       log('err', 'no handshake from the frame — see the framing hint');
@@ -163,18 +168,15 @@
     if (state.gotMessage) return;
     state.gotMessage = true; clearTimeout(watchdog);
     framingEl.className = 'status ok'; framingEl.style.display = 'block';
-    framingEl.textContent = `Your page loads inside ${location.origin} and is talking to us. (The extension origin still needs the header check below.)`;
+    framingEl.textContent = `Your page loads inside ${location.origin} and is talking to us.`;
   }
 
-  // ---- server-side header check -----------------------------------------------
-  // Only a server can read another origin's headers. Comprehend's API fetches
-  // the URL (HEAD, headers only, https + public hosts only) and evaluates
-  // framing for every origin we embed from. Public endpoint, no login.
+  // ---- server-side header check ------------------------------------------------
   const API_BASE = location.host === 'app.comprehendpt.com' ? 'https://api.app.comprehendpt.com' : 'https://api.dev.comprehendpt.com';
   const LABELS = { 'https://app.comprehendpt.com': 'Web app', 'chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc': 'Chrome extension side panel' };
   async function checkHeaders() {
     const url = $('target').value.trim();
-    const out = document.getElementById('headerResults');
+    const out = $('headerResults');
     if (!/^https:\/\//.test(url)) { out.innerHTML = '<div class="status bad">Enter an https URL first — the check runs from our server, so localhost can\'t be reached from there. Use the curl below for localhost.</div>'; return; }
     out.innerHTML = '<div class="status">Checking…</div>';
     try {
@@ -183,30 +185,16 @@
       if (body.error) { out.innerHTML = `<div class="status bad">${escapeHtml(body.error)}</div>`; log('err', `header check: ${body.error}`); return; }
       const rows = Object.entries(body.results).map(([origin, r]) =>
         `<div class="status ${r.allowed ? 'ok' : 'bad'}">${r.allowed ? '✓' : '✗'} <b>${LABELS[origin] || origin}</b> <code>${escapeHtml(origin)}</code> — ${escapeHtml(r.reason)}</div>`).join('');
-      // Real-world CSPs run to kilobytes; show only the directive that matters.
-      const trim = (k, v) => {
-        if (k !== 'content-security-policy') return v;
-        const m = v.match(/frame-ancestors[^;]*/i);
-        return m ? `${m[0]}${v.length > m[0].length ? '  … (other directives omitted)' : ''}` : `(no frame-ancestors directive; ${v.length} chars omitted)`;
-      };
+      const trim = (k, v) => { if (k !== 'content-security-policy') return v; const m = v.match(/frame-ancestors[^;]*/i); return m ? `${m[0]}${v.length > m[0].length ? '  … (other directives omitted)' : ''}` : `(no frame-ancestors directive; ${v.length} chars omitted)`; };
       const hdr = (k) => body.headers[k] ? `<code>${escapeHtml(k)}: ${escapeHtml(trim(k, body.headers[k]))}</code>` : `<span class="status">${escapeHtml(k)}: <i>not sent</i></span>`;
       const allOk = Object.values(body.results).every((r) => r.allowed);
       out.innerHTML = rows +
         `<div class="status" style="margin-top:6px">HTTP ${body.status}${body.finalUrl !== body.url ? ` after redirect to <code>${escapeHtml(body.finalUrl)}</code>` : ''}<br>${hdr('content-security-policy')}<br>${hdr('x-frame-options')}</div>` +
         (allOk ? '' : `<div class="status" style="margin-top:6px">Send: <code>${escapeHtml(body.recommended)}</code></div>`);
       log(allOk ? 'out' : 'err', `header check: ${Object.values(body.results).filter((r) => r.allowed).length}/${Object.keys(body.results).length} origins allowed`);
-    } catch (e) {
-      out.innerHTML = `<div class="status bad">Check failed: ${escapeHtml(e.message)}</div>`;
-    }
+    } catch (e) { out.innerHTML = `<div class="status bad">Check failed: ${escapeHtml(e.message)}</div>`; }
   }
-  document.getElementById('checkHeaders').onclick = checkHeaders;
-
-  // ---- log ---------------------------------------------------------------
-  function log(kind, msg) {
-    const d = document.createElement('div'); d.className = kind;
-    d.textContent = `${new Date().toLocaleTimeString()} ${kind === 'out' ? '→ app' : kind === 'in' ? '← app' : '  ✗'} ${msg}`;
-    $('log').prepend(d);
-  }
+  $('checkHeaders').onclick = checkHeaders;
 
   // ---- name resemblance (same rules as namesResemble.js) -----------------
   const strip = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z\s-]/g, ' ').replace(/[-\s]+/g, ' ').trim();
@@ -236,7 +224,7 @@
     return anyPair(o.first, t.first, true);
   }
 
-  // ---- structure → types (mirrors flexCompile) ---------------------------
+  // ---- structure → types, mock answers (mirrors flexCompile / evaluator) --------
   const TYPES = ['boolean', 'number', 'string', 'string[]', 'number[]'];
   const SHORTHAND = /^\s*(boolean|number|string|string\[\]|number\[\])\s+[—–-]\s+([\s\S]*)$/;
   const isLeafObj = (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((k) => k[0] === '_');
@@ -251,42 +239,45 @@
     return types;
   }
   function mockAnswers(structure, types, scenario) {
-    const leaf = (path, type) => {
+    const leaf = (path, type, node) => {
       const k = path.toLowerCase(); const has = (w) => k.includes(w);
+      let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0;
       switch (type) {
-        case 'boolean': if (has('rtm') || has('remote')) return scenario === 'rtm'; if (has('hep') || has('exercise') || has('test')) return scenario !== 'none'; return false;
+        case 'boolean': if (has('rtm') || has('remote')) return scenario === 'rtm'; if (scenario === 'none') return false; return (h & 1) === 0;
         case 'number': if (has('pain')) return scenario === 'none' ? null : 4; return scenario === 'none' ? null : 3;
-        case 'string[]': if (has('hep') || has('exercise') || has('change')) return scenario === 'hep' ? ['sit-to-stand 3x12', 'bridge 2x10 (added)'] : []; return [];
+        case 'string[]': if (has('change') || has('plan') || has('exercise')) return scenario === 'none' ? [] : ['sit-to-stand 3x12', 'bridge 2x10 (added)']; return [];
         case 'number[]': return scenario === 'none' ? [] : [3, 4];
         default:
+          if (node && Array.isArray(node._choices) && node._choices.length) return scenario === 'none' ? null : node._choices[Math.abs(h) % node._choices.length];
+          if (has('adherence')) return scenario === 'none' ? null : 'says they did most days, skipped when the knee hurt';
           if (has('site') || has('region')) return scenario === 'none' ? null : 'left knee';
-          if (has('barrier') || has('reason')) return scenario === 'none' ? 'none' : 'pain';
-          if (has('action')) return 'modified';
-          if (has('exercise') || has('name')) return 'sit-to-stand';
           if (has('dosage') || has('reps') || has('sets')) return '3x12';
-          if (has('side')) return scenario === 'none' ? 'none stated' : 'left';
           return scenario === 'none' ? null : 'discussed briefly';
       }
     };
     return (function walk(node, path) {
-      if (Object.prototype.hasOwnProperty.call(types, path)) return leaf(path, types[path]);
+      if (Object.prototype.hasOwnProperty.call(types, path)) return leaf(path, types[path], isLeafObj(node) ? node : null);
       if (Array.isArray(node)) { if (scenario === 'none') return []; const n = scenario === 'hep' ? 2 : 1; return Array.from({ length: n }, () => walk(node[0], path + '[]')); }
       if (node && typeof node === 'object') { const out = {}; for (const k of Object.keys(node)) if (k !== '_existingValue') out[k] = walk(node[k], path ? path + '.' + k : k); return out; }
       return null;
     })(structure, '');
   }
-  const hash = (v) => { const s = JSON.stringify(v, Object.keys(flatten(v)).sort()); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
   function flatten(v, out = {}) { if (v && typeof v === 'object') for (const k of Object.keys(v)) { out[k] = 1; flatten(v[k], out); } return out; }
+  const hash = (v) => { const s = JSON.stringify(v, Object.keys(flatten(v)).sort()); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
   // ---- host → app ----------------------------------------------------------
   function send(msg) { if (!state.origin || !frame.contentWindow) return; frame.contentWindow.postMessage(msg, state.origin); }
   function patientForApp() { if (!state.patient) return null; return { ...state.patient, ref: state.refs[`${state.origin}:${state.patient.id}`] ?? null }; }
-  function sendReady() { state.ready = true; const p = patientForApp(); send({ type: 'comprehend:ready', appId: 'sandbox', patient: p, contextVersion: state.contextVersion }); log('out', `ready · patient=${p ? p.name : 'none'}${p && p.ref ? ' ref=' + p.ref : ''}`); }
-  function sendPatient() { const p = patientForApp(); send({ type: 'comprehend:patient', patient: p, contextVersion: state.contextVersion }); log('out', `patient → ${p ? p.name : 'none'}${p && p.ref ? ' ref=' + p.ref : ''}`); }
-  function sendError(id, code, message, reason) { send({ type: 'comprehend:error', id, code, reason, message }); log('err', `${code}${reason ? '/' + reason : ''}${id ? ' [' + id + ']' : ''}: ${message}`); }
+  function sendPatient(reason) {
+    if (reason === 'ready') state.ready = true;
+    const p = patientForApp();
+    send({ type: 'comprehend:patient', patient: p, reason, contextVersion: state.contextVersion });
+    log('out', `patient(${reason}) → ${p ? p.name : 'none'}${p && p.ref ? ' yourId=' + p.ref : ''}`);
+  }
+  function sendError(id, code) { send({ type: 'comprehend:error', id, code }); log('err', `${code}${id ? ' [' + id + ']' : ''} → app (code only)`); }
 
   function evaluate(reason, onlyId) {
-    if (!state.patient) { for (const id of state.subs.keys()) if (!onlyId || id === onlyId) sendError(id, 'NO_ENCOUNTER', 'no visit is open'); return; }
+    if (!state.patient) return;
     for (const [id, sub] of state.subs) {
       if (onlyId && id !== onlyId) continue;
       const key = `${sub.hash}|${state.contextVersion}|${state.patient.id}`;
@@ -305,19 +296,25 @@
     const msg = event.data; if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('comprehend:')) return;
     markAlive();
     switch (msg.type) {
-      case 'comprehend:provide': {
-        log('in', `provide patientId=${msg.patientId} patientName="${msg.patientName}" patientRef=${msg.patientRef ?? '—'} (${(msg.markdown || '').length} chars)`);
-        if (!state.patient) return sendError(undefined, 'NO_ENCOUNTER', 'no chart is open');
-        if (String(msg.patientId) !== state.patient.id) return sendError(undefined, 'PATIENT_MISMATCH', `provide was for ${msg.patientId}; open chart is ${state.patient.id}`, 'NOT_OPEN');
-        if (!namesResemble(state.patient.name, msg.patientName)) { state.lastMismatch = { theirs: msg.patientName, ours: state.patient.name }; renderLink(); return sendError(undefined, 'PATIENT_MISMATCH', `"${msg.patientName}" does not resemble the open chart "${state.patient.name}"`, 'NAME_MISMATCH'); }
+      case 'comprehend:context': {
+        log('in', `setContext for ${msg.patientId} as "${msg.name}" (yourId ${msg.yourId ?? '—'}, ${(msg.markdown || '').length} chars)`);
+        if (!state.patient || String(msg.patientId) !== state.patient.id) return sendError(undefined, 'STALE_PATIENT');
+        if (!namesResemble(state.patient.name, msg.name)) {
+          state.lastMismatch = { theirs: msg.name, ours: state.patient.name }; renderLink();
+          return sendError(undefined, 'CONTEXT_REJECTED');
+        }
         let md = typeof msg.markdown === 'string' ? msg.markdown : ''; if (md.length > MAX_BUFFER) md = md.slice(0, MAX_BUFFER) + '\n\n_[truncated at 8 KB]_';
-        state.buffers.set(state.patient.id, { markdown: md, patientName: msg.patientName, patientRef: msg.patientRef ?? null, providedAt: new Date().toISOString() });
-        if (msg.patientRef != null) { state.refs[`${state.origin}:${state.patient.id}`] = String(msg.patientRef); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
+        state.buffers.set(state.patient.id, { markdown: md, name: msg.name, yourId: msg.yourId ?? null, providedAt: new Date().toISOString() });
+        if (msg.yourId != null) { state.refs[`${state.origin}:${state.patient.id}`] = String(msg.yourId); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
         state.lastMismatch = null; renderBuffer(); renderLink(); break;
+      }
+      case 'comprehend:clearContext': {
+        if (state.patient && String(msg.patientId) === state.patient.id) { state.buffers.delete(state.patient.id); renderBuffer(); }
+        log('in', `clearContext for ${msg.patientId}`); break;
       }
       case 'comprehend:subscribe': {
         if (!msg.id) return;
-        if (!state.subs.has(msg.id) && state.subs.size >= MAX_SUBS) return sendError(msg.id, 'TOO_MANY_SUBSCRIPTIONS', `max ${MAX_SUBS} live subscriptions per app`);
+        if (!state.subs.has(msg.id) && state.subs.size >= MAX_SUBS) return sendError(msg.id, 'TOO_MANY_SUBSCRIPTIONS');
         const types = typesOf(msg.structure || {});
         state.subs.set(msg.id, { structure: msg.structure, types, hash: hash(msg.structure), lastKey: null, lastAnswers: null });
         log('in', `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
@@ -335,48 +332,48 @@
   }
   function renderBuffer() {
     const b = state.patient ? state.buffers.get(state.patient.id) : null;
-    $('buffer').textContent = b ? b.markdown : 'nothing provided for this patient';
-    $('bufferMeta').textContent = b ? `— ${b.patientName} · ref ${b.patientRef ?? '—'} · ${new Date(b.providedAt).toLocaleTimeString()}` : '';
+    $('buffer').textContent = b ? b.markdown : 'nothing set for this patient';
+    $('bufferMeta').textContent = b ? `— ${b.name} · yourId ${b.yourId ?? '—'} · ${new Date(b.providedAt).toLocaleTimeString()}` : '';
   }
   function renderSubs() {
     $('subCount').textContent = state.subs.size;
     $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${Object.keys(s.types).length} leaves ${s.lastAnswers ? '<span class="pill ok">answered</span>' : '<span class="pill">pending</span>'}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
   }
   function renderLink() {
-    const el = $('linkStatus'); el.className = 'status';
+    const el = $('linkStatus'); el.className = 'status'; $('clinicianToast').innerHTML = '';
     if (!state.origin) { el.textContent = 'Load your app first.'; return; }
-    if (state.lastMismatch) { el.className = 'status bad'; el.textContent = `Your app has "${state.lastMismatch.theirs}" open; Comprehend has "${state.lastMismatch.ours}". Not linked — buffer rejected.`; return; }
+    if (state.lastMismatch) {
+      el.className = 'status bad'; el.textContent = 'Not linked — context rejected.';
+      $('clinicianToast').innerHTML = `<div class="toast">Clinician sees: <b>Your app has "${escapeHtml(state.lastMismatch.theirs)}" open; this visit is "${escapeHtml(state.lastMismatch.ours)}". Not linked — open the same patient in both places.</b><br><span style="opacity:.8">Your app only received <code>CONTEXT_REJECTED</code>.</span></div>`;
+      return;
+    }
     if (!state.patient) { el.textContent = 'No chart open in Comprehend.'; return; }
     const ref = state.refs[`${state.origin}:${state.patient.id}`];
     const b = state.buffers.get(state.patient.id);
-    if (b) { el.className = 'status ok'; el.textContent = `Comprehend: ${state.patient.name} ↔ your app: ${b.patientName}${ref ? ` · linked as ${ref}` : ' · no patientRef given'}`; }
-    else el.textContent = ref ? `Linked before as ${ref} — your app should open that chart on ready/patient.` : `Open ${state.patient.name} in your app to link.`;
+    if (b) { el.className = 'status ok'; el.textContent = `Comprehend: ${state.patient.name} ↔ your app: ${b.name}${ref ? ` · linked as ${ref}` : ' · no id given'}`; }
+    else el.textContent = ref ? `Linked before as ${ref} — your app should open that chart on patient(ready/changed).` : `Open ${state.patient.name} in your app to link.`;
   }
-  const escapeHtml = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
   function load(url) {
     let u; try { u = new URL(url); } catch (e) { $('targetStatus').textContent = 'Enter a full URL, e.g. http://localhost:5173/'; $('targetStatus').className = 'status bad'; return; }
     state.origin = u.origin; state.ready = false; state.subs.clear(); state.lastMismatch = null;
     u.searchParams.set('comprehend', '1');
-    // comprehend.js pins app.comprehendpt.com; when this sandbox runs on localhost it
-    // must pin us instead. The script only ever honours localhost values here.
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.origin)) u.searchParams.set('comprehend_host', location.origin);
-    else if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
+    if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
     frame.src = u.toString();
     startWatchdog(); renderCurl();
     $('targetStatus').textContent = `Loaded. Accepting messages only from ${state.origin}.`; $('targetStatus').className = 'status ok';
     localStorage.setItem('comprehend_sandbox_target', url);
     renderSubs(); renderBuffer(); renderLink();
   }
-  frame.addEventListener('load', () => { if (state.origin) sendReady(); });
+  frame.addEventListener('load', () => { if (state.origin) sendPatient('ready'); });
 
   $('load').onclick = () => load($('target').value.trim());
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
-  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient(); evaluate('chart_open'); } });
+  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); evaluate('chart_open'); } });
   $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.scenario = b.dataset.s; renderPatients(); });
-  $('bump').onclick = () => { state.contextVersion += 1; renderPatients(); log('out', `contextVersion → ${state.contextVersion} (cache invalidated; nothing pushed until an action)`); };
-  $('refresh').onclick = () => evaluate('refresh');
+  $('bump').onclick = () => { state.contextVersion += 1; renderPatients(); log('out', `version → ${state.contextVersion} (cache invalidated; nothing pushed until an action)`); };
+  $('refresh').onclick = () => { if (!state.ready) return; sendPatient('refresh'); evaluate('refresh'); };
   $('clearRefs').onclick = () => { state.refs = {}; localStorage.removeItem(REFS_KEY); renderLink(); log('out', 'links forgotten'); };
 
   renderPatients(); renderBuffer(); renderSubs(); renderLink(); renderCurl();

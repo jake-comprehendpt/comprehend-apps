@@ -24,7 +24,7 @@
 <main>
   <aside>
     <label>Athlete / patient<br><select id="pick"><option value="">—</option></select></label>
-    <p style="font-size:12px;color:#94a3b8;margin-top:12px">Pick the same patient Comprehend has open. The first <code>provide</code> links the two ids; next visit this selects itself.</p>
+    <p style="font-size:12px;color:#94a3b8;margin-top:12px">Pick the same patient Comprehend has open. Your first <code>setContext</code> links the two ids; next visit this selects itself.</p>
   </aside>
   <section>
     <div class="card"><h3>Latest test</h3><div id="metrics">—</div></div>
@@ -37,53 +37,56 @@
 <script src="../comprehend.js"></script>
 <script>
   const ROSTER = [
-    { id: 'V-77', name: 'Kim, Ann',     test: 'CMJ', date: '2026-09-04', jump: 31.2, asym: 14, note: 'L quad deficit' },
-    { id: 'V-78', name: 'Smith, Robert', test: 'CMJ', date: '2026-09-05', jump: 27.9, asym: 6,  note: 'within normal' },
+    { id: 'V-77', name: 'Kim, Ann',      tests: ['CMJ', 'Single-leg hop L', 'Single-leg hop R'], date: '2026-09-04', jump: 31.2, asym: 14, note: 'L quad deficit' },
+    { id: 'V-78', name: 'Smith, Robert', tests: ['CMJ', 'Isometric mid-thigh pull'],              date: '2026-09-05', jump: 27.9, asym: 6,  note: 'within normal' },
   ];
-  let current = null;
+  let current = null, unsubscribe = null;
   const $ = (id) => document.getElementById(id);
   const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
 
   $('pick').innerHTML += ROSTER.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  $('pick').addEventListener('change', () => { current = ROSTER.find(p => p.id === $('pick').value) || null; render(); sync(); });
+  $('pick').addEventListener('change', () => { current = ROSTER.find(p => p.id === $('pick').value) || null; render(); sync(comprehend.patient); });
 
   function render() {
     $('metrics').innerHTML = current ? `
-      <span class="metric"><small>${current.test} · ${current.date}</small><b>${current.jump} cm</b></span>
+      <span class="metric"><small>${current.tests[0]} · ${current.date}</small><b>${current.jump} cm</b></span>
       <span class="metric ${current.asym > 10 ? 'bad' : ''}"><small>asymmetry</small><b>${current.asym}%</b></span>
       <span class="metric"><small>note</small><b style="font-size:14px">${current.note}</b></span>` : '—';
     const ours = comprehend.patient;
     $('link').textContent = !comprehend.ready ? 'not connected to Comprehend' : !ours ? 'Comprehend: no chart open'
-      : `Comprehend: ${ours.name}${ours.ref ? ' · linked ' + ours.ref : ''}`;
+      : `Comprehend: ${ours.name}${ours.yourId ? ' · linked ' + ours.yourId : ''}`;
   }
 
-  function sync() {
-    const theirs = comprehend.patient;
-    if (!theirs || !current) return;
-    comprehend.provide(`## Force plate — ${current.test} ${current.date}
+  comprehend.on('patient', (patient, { reason }) => {
+    log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
+    if (patient && patient.yourId) { current = ROSTER.find(p => p.id === patient.yourId) || current; $('pick').value = current ? current.id : ''; }
+    render(); sync(patient);
+  });
+  comprehend.on('error', ({ code }) => { $('answers').textContent = code; log(`error ← ${code}`); });
+
+  function sync(patient) {
+    if (!patient || !current) return;
+    patient.setContext(`## Force plate — ${current.tests[0]} ${current.date}
 - Jump height: ${current.jump} cm
 - L/R asymmetry: ${current.asym}% ${current.asym > 10 ? '(above 10% threshold)' : ''}
-- Tester note: ${current.note}`, { patientId: theirs.id, patientName: current.name, patientRef: current.id });
-    log(`provide → ${theirs.id} as "${current.name}" ref ${current.id}`);
+- Tester note: ${current.note}`, { id: current.id, name: current.name });
+    log(`setContext → ${patient.id} as "${current.name}" (${current.id})`);
+
+    // Questions built from THIS patient's test battery.
+    if (unsubscribe) unsubscribe();
+    const discussed = {};
+    for (const t of current.tests) discussed[t] = `boolean — was the ${t} result discussed with the patient today?`;
+    unsubscribe = comprehend.subscribe({
+      discussed,
+      side_of_concern: { _choices: ['left', 'right', 'both', 'none stated'], _description: 'limb the PT was concerned about' },
+      plan_changes: 'string[] — changes to the plan of care the PT stated (progressions, holds, referrals)',
+    }, (answers, forPatient, meta) => {
+      if (comprehend.patient && comprehend.patient.id !== forPatient.id) return;
+      $('answers').textContent = `v${meta.version}\n` + JSON.stringify(answers, null, 2);
+      log(`answers ← v${meta.version}`);
+    });
+    log(`subscribe → ${current.tests.length} test booleans for ${current.name}`);
   }
-
-  const onPatient = ({ patient }) => {
-    log(`comprehend patient → ${patient ? patient.name : 'none'}${patient && patient.ref ? ' (ref ' + patient.ref + ')' : ''}`);
-    if (patient && patient.ref) { current = ROSTER.find(p => p.id === patient.ref) || current; $('pick').value = current ? current.id : ''; }
-    render(); sync();
-  };
-  comprehend.on('ready', onPatient);
-  comprehend.on('patient', onPatient);
-
-  comprehend.subscribe({
-    tested_today: 'boolean — was a force plate / jump test performed or discussed today?',
-    side_of_concern: { _type: 'string', _choices: ['left', 'right', 'both', 'none stated'], _description: 'limb the PT was concerned about' },
-    plan_changes: 'string[] — changes to the plan of care the PT stated (progressions, holds, referrals)',
-  }, ({ patientId, answers, contextVersion }) => {
-    if (comprehend.patient && comprehend.patient.id !== patientId) return;
-    $('answers').textContent = `v${contextVersion}\n` + JSON.stringify(answers, null, 2);
-    log(`answers ← v${contextVersion}`);
-  }, (err) => { $('answers').textContent = `${err.code}: ${err.message}`; log(`error ← ${err.code}`); });
 
   render();
 </script>

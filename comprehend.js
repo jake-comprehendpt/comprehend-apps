@@ -1,17 +1,24 @@
-/* comprehend.js — vendor-side bridge for Comprehend Apps.
+/* comprehend.js — the bridge between your app and Comprehend.
  *
- * Served at https://app.comprehendpt.com/comprehend.js. Contract:
- * docs/vendor-apps-contract.md. No build step, no dependencies, one global.
+ * Served at https://app.comprehendpt.com/comprehend.js. No build step, no
+ * dependencies, one global. Full contract: https://app.comprehendpt.com/developers.html
  *
- *   comprehend.provide(markdown, { patientId, patientName, patientRef })  // keep the buffer current; id + name required
- *   comprehend.patient                                        // { id, name, dob, ref } | null
- *   comprehend.subscribe(structure, onAnswers, onError?)      // Flex++ structure; shorthand leaf 'type — prompt'
- *                                                             // onAnswers({ patientId, answers, contextVersion, answeredAt, partial?, errors? })
- *                                                             // -> unsubscribe()
- *   comprehend.on('ready' | 'patient', fn)
+ *   EVENTS (we → you)
+ *   comprehend.on('patient', (patient, { reason }) => …)   // patient | null; reason 'ready' | 'changed' | 'refresh'
+ *   comprehend.on('error',   ({ code }) => …)              // STALE_PATIENT | CONTEXT_REJECTED | BAD_STRUCTURE | TOO_MANY_SUBSCRIPTIONS
  *
- * Calls made before the host says hello are queued and flushed, so nothing
- * needs to be gated on `ready`.
+ *   CONTENT (you → us, on the patient handle)
+ *   patient.setContext(markdown, { id, name })             // what you know about YOUR patient {id, name}; this is also the link
+ *   patient.clearContext()
+ *
+ *   QUESTIONS (you ask, we answer when the clinician acts)
+ *   comprehend.subscribe(structure, (answers, patient, meta) => …)  // → unsubscribe()
+ *
+ *   comprehend.patient                                     // the current handle, or null
+ *
+ * A handle is your proof of which chart you were answering for: if the
+ * clinician has moved on, calls on it are dropped with STALE_PATIENT. Calls
+ * made before the handshake are queued — nothing to gate on.
  */
 (function (global) {
   'use strict';
@@ -19,9 +26,9 @@
 
   var HOST_ORIGIN = 'https://app.comprehendpt.com';
   // The host tells us where it lives when it isn't the production web app:
-  // our dev site, a localhost Dev Console / sandbox, or the Comprehend Chrome
-  // extension's side panel (an explicit allowlist of OUR extension ids — never
-  // any chrome-extension://, or another extension could pose as Comprehend to
+  // our dev site, a localhost sandbox, or the Comprehend Chrome extension's
+  // side panel (an explicit allowlist of OUR extension ids — never any
+  // chrome-extension://, or another extension could pose as Comprehend to
   // your page). Anything else is ignored and we keep pinning production.
   var EXTENSION_HOSTS = [
     'chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc' // Comprehend EMR Integration (desktop, Chrome Web Store)
@@ -43,12 +50,11 @@
   var LEAF_KEYS = ['_type', '_description', '_choices', '_existingValue'];
 
   var ready = false;
-  var appId = null;
-  var patient = null;
+  var current = null;        // the current patient handle, or null
   var contextVersion = 0;
-  var listeners = { ready: [], patient: [] };
-  var outbox = [];          // messages queued until the host says hello
-  var subs = {};            // subscription id -> { onAnswers, onError }
+  var listeners = { patient: [], error: [] };
+  var outbox = [];           // messages queued until the host says hello
+  var subs = {};             // subscription id -> callback
   var seq = 0;
 
   function post(msg) {
@@ -56,17 +62,49 @@
     global.parent.postMessage(msg, HOST_ORIGIN);
   }
 
-  function emit(event, payload) {
+  function emit(event, a, b) {
     listeners[event].slice().forEach(function (fn) {
-      try { fn(payload); } catch (e) { console.error('[comprehend] listener threw', e); }
+      try { fn(a, b); } catch (e) { console.error('[comprehend] ' + event + ' listener threw', e); }
     });
   }
 
-  function makeError(code, message, reason) {
+  function raise(code, message) {
     var err = new Error('[comprehend] ' + (message || code));
     err.code = code;
-    if (reason) err.reason = reason;
     return err;
+  }
+
+  // ---- patient handles -----------------------------------------------------
+  // Built from what the host sends. `id` is Comprehend's; `yourId` is the id
+  // you gave us for this patient before (or null). Methods carry `id` on the
+  // wire so the host can drop anything meant for a chart that's no longer open.
+  function makeHandle(p) {
+    if (!p) return null;
+    var handle = {
+      id: String(p.id),
+      name: p.name || '',
+      dob: p.dob || null,
+      yourId: p.ref != null ? String(p.ref) : null,
+      setContext: function (markdown, you) {
+        if (typeof markdown !== 'string') throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name }) — markdown must be a string');
+        var yourName = you && you.name;
+        if (yourName && typeof yourName === 'object') yourName = [yourName.first, yourName.last].filter(Boolean).join(' ');
+        if (typeof yourName !== 'string' || !yourName.trim()) {
+          throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name }) — name is the name of the patient open in YOUR app');
+        }
+        post({
+          type: 'comprehend:context',
+          patientId: handle.id,
+          markdown: markdown,
+          yourId: you && you.id != null ? String(you.id) : null,
+          name: yourName.trim()
+        });
+      },
+      clearContext: function () {
+        post({ type: 'comprehend:clearContext', patientId: handle.id });
+      }
+    };
+    return handle;
   }
 
   global.addEventListener('message', function (event) {
@@ -75,65 +113,40 @@
     if (!msg || typeof msg.type !== 'string' || msg.type.indexOf('comprehend:') !== 0) return;
 
     switch (msg.type) {
-      case 'comprehend:ready':
-        appId = msg.appId;
-        patient = msg.patient || null;
+      case 'comprehend:patient': {
+        var wasReady = ready;
+        current = makeHandle(msg.patient);
         contextVersion = msg.contextVersion || 0;
-        ready = true;
-        outbox.splice(0).forEach(post);
-        emit('ready', { appId: appId, patient: patient });
+        if (!wasReady) { ready = true; outbox.splice(0).forEach(post); }
+        emit('patient', current, { reason: msg.reason || (wasReady ? 'changed' : 'ready') });
         break;
-
-      case 'comprehend:patient':
-        patient = msg.patient || null;
-        contextVersion = msg.contextVersion || 0;
-        emit('patient', { patient: patient });
-        break;
-
+      }
       case 'comprehend:answers': {
-        var sub = subs[msg.id];
-        if (!sub) return;
+        var cb = subs[msg.id];
+        if (!cb) return;
         contextVersion = msg.contextVersion || contextVersion;
+        var forPatient = current && current.id === String(msg.patientId) ? current : makeHandle({ id: msg.patientId });
         try {
-          sub.onAnswers({
-            patientId: msg.patientId,
-            answers: msg.answers,
-            contextVersion: msg.contextVersion,
-            answeredAt: msg.answeredAt,
-            partial: !!msg.partial,
-            errors: msg.errors || [],
-          });
-        } catch (e) { console.error('[comprehend] onAnswers threw', e); }
+          cb(msg.answers, forPatient, { version: msg.contextVersion, partial: !!msg.partial, errors: msg.errors || [] });
+        } catch (e) { console.error('[comprehend] subscribe callback threw', e); }
         break;
       }
-
-      case 'comprehend:error': {
-        var err = makeError(msg.code, msg.message, msg.reason);
-        var target = msg.id && subs[msg.id];
-        if (target && target.onError) {
-          try { target.onError(err); } catch (e) { console.error('[comprehend] onError threw', e); }
-        } else {
-          console.warn(err.message);
-        }
+      case 'comprehend:error':
+        emit('error', { code: msg.code, subscriptionId: msg.id || null });
         break;
-      }
     }
   });
 
-  // A Flex++ Structure: nested object whose shape is the answer shape.
+  // ---- structure validation (mirrors the host's caps) -----------------------
   //   leaf   = 'type — prompt' | { _type?, _description?, _choices?, _existingValue? }
   //   object = { key: leaf | object | list }
-  //   list   = [ row, ... ]  where row is an object (first row is the prototype)
-  // Returns { problem, reason } or null. Counts leaves so the host cap is
-  // enforced before anything crosses the frame.
+  //   list   = [ row, ... ]  (first row is the prototype)
   function validateStructure(structure) {
     var leaves = 0;
-
     function isLeafObject(v) {
       var keys = Object.keys(v);
       return keys.length > 0 && keys.every(function (k) { return k.charAt(0) === '_'; });
     }
-
     function walk(node, path) {
       if (typeof node === 'string') {
         if (!node.trim()) return 'empty prompt at "' + path + '"';
@@ -145,16 +158,13 @@
       if (Array.isArray(node)) {
         if (node.length === 0) return 'empty list at "' + path + '" — give one prototype row';
         for (var i = 0; i < node.length; i++) {
-          if (!node[i] || typeof node[i] !== 'object' || Array.isArray(node[i])) {
-            return 'list rows must be objects at "' + path + '[' + i + ']"';
-          }
+          if (!node[i] || typeof node[i] !== 'object' || Array.isArray(node[i])) return 'list rows must be objects at "' + path + '[' + i + ']"';
           var rowProblem = walk(node[i], path + '[' + i + ']');
           if (rowProblem) return rowProblem;
         }
         return null;
       }
       if (!node || typeof node !== 'object') return 'unexpected value at "' + path + '"';
-
       if (isLeafObject(node)) {
         var keys = Object.keys(node);
         for (var k = 0; k < keys.length; k++) {
@@ -165,93 +175,56 @@
         leaves++;
         return null;
       }
-
       var childKeys = Object.keys(node);
       if (childKeys.length === 0) return 'empty object at "' + path + '"';
       for (var c = 0; c < childKeys.length; c++) {
         var key = childKeys[c];
-        // Row-level _existingValue on a list row marks "update, don't re-add".
-        if (key === '_existingValue') continue;
+        if (key === '_existingValue') continue; // row-level marker on a list row
         var problem = walk(node[key], path ? path + '.' + key : key);
         if (problem) return problem;
       }
       return null;
     }
-
-    if (!structure || typeof structure !== 'object' || Array.isArray(structure)) {
-      return { problem: 'subscribe() takes a Flex++ structure object', reason: 'MALFORMED' };
-    }
+    if (!structure || typeof structure !== 'object' || Array.isArray(structure)) return { problem: 'subscribe() takes a structure object', reason: 'MALFORMED' };
     var problem = walk(structure, '');
     if (problem) return { problem: problem, reason: 'MALFORMED' };
-    if (leaves > MAX_LEAVES) {
-      return { problem: leaves + ' leaves; max ' + MAX_LEAVES + ' — split into several subscriptions', reason: 'TOO_LARGE' };
-    }
+    if (leaves > MAX_LEAVES) return { problem: leaves + ' leaves; max ' + MAX_LEAVES + ' — split into several subscriptions', reason: 'TOO_LARGE' };
     var bytes;
     try { bytes = JSON.stringify(structure).length; } catch (e) { return { problem: 'structure is not serializable', reason: 'MALFORMED' }; }
-    if (bytes > MAX_BYTES) {
-      return { problem: bytes + ' bytes; max ' + MAX_BYTES + ' — split into several subscriptions', reason: 'TOO_LARGE' };
-    }
+    if (bytes > MAX_BYTES) return { problem: bytes + ' bytes; max ' + MAX_BYTES + ' — split into several subscriptions', reason: 'TOO_LARGE' };
     return null;
   }
 
   var comprehend = {
     get ready() { return ready; },
-    get patient() { return patient; },
+    get patient() { return current; },
     get contextVersion() { return contextVersion; },
 
     on: function (event, fn) {
-      if (!listeners[event]) throw makeError('BAD_EVENT', 'unknown event "' + event + '"');
+      if (!listeners[event]) throw raise('BAD_EVENT', 'unknown event "' + event + '" (patient | error)');
       listeners[event].push(fn);
-      if (event === 'ready' && ready) fn({ appId: appId, patient: patient });
+      // Late subscribers to 'patient' get the current state immediately.
+      if (event === 'patient' && ready) { try { fn(current, { reason: 'ready' }); } catch (e) { console.error('[comprehend] patient listener threw', e); } }
       return function off() {
         var i = listeners[event].indexOf(fn);
         if (i !== -1) listeners[event].splice(i, 1);
       };
     },
 
-    // patientId and patientName are required on purpose. patientId lets the
-    // host drop a provide for a patient whose chart is no longer open;
-    // patientName (the vendor's own name for the patient) lets the host
-    // refuse a provide — and the link — when the two names don't resemble
-    // each other (PATIENT_MISMATCH / NAME_MISMATCH).
-    provide: function (markdown, opts) {
-      if (typeof markdown !== 'string') throw makeError('BAD_PROVIDE', 'provide() takes a markdown string');
-      var patientId = opts && opts.patientId;
-      if (patientId == null || patientId === '') {
-        throw makeError('BAD_PROVIDE', 'provide() requires { patientId } — use comprehend.patient.id');
-      }
-      var name = opts.patientName;
-      if (name && typeof name === 'object') {
-        name = [name.first, name.last].filter(Boolean).join(' ');
-      }
-      if (typeof name !== 'string' || !name.trim()) {
-        throw makeError('BAD_PROVIDE', 'provide() requires { patientName } — the name of the patient open in YOUR app');
-      }
-      post({
-        type: 'comprehend:provide',
-        markdown: markdown,
-        patientId: String(patientId),
-        patientName: name.trim(),
-        patientRef: opts.patientRef != null ? String(opts.patientRef) : null,
-      });
-    },
-
-    subscribe: function (structure, onAnswers, onError) {
-      if (typeof onAnswers !== 'function') throw makeError('BAD_SUBSCRIBE', 'subscribe() needs an onAnswers callback');
+    subscribe: function (structure, onAnswers) {
+      if (typeof onAnswers !== 'function') throw raise('BAD_SUBSCRIBE', 'subscribe(structure, (answers, patient, meta) => …)');
       var invalid = validateStructure(structure);
-      if (invalid) throw makeError('BAD_STRUCTURE', invalid.problem, invalid.reason);
-      if (Object.keys(subs).length >= MAX_SUBSCRIPTIONS) {
-        throw makeError('TOO_MANY_SUBSCRIPTIONS', 'max ' + MAX_SUBSCRIPTIONS + ' live subscriptions per app');
-      }
+      if (invalid) { var e = raise('BAD_STRUCTURE', invalid.problem); e.reason = invalid.reason; throw e; }
+      if (Object.keys(subs).length >= MAX_SUBSCRIPTIONS) throw raise('TOO_MANY_SUBSCRIPTIONS', 'max ' + MAX_SUBSCRIPTIONS + ' live subscriptions per app');
       var id = 'sub_' + (++seq) + '_' + Date.now().toString(36);
-      subs[id] = { onAnswers: onAnswers, onError: typeof onError === 'function' ? onError : null };
+      subs[id] = onAnswers;
       post({ type: 'comprehend:subscribe', id: id, structure: structure });
       return function unsubscribe() {
         if (!subs[id]) return;
         delete subs[id];
         post({ type: 'comprehend:unsubscribe', id: id });
       };
-    },
+    }
   };
 
   global.comprehend = comprehend;

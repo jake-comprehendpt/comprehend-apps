@@ -4,7 +4,7 @@ Listed apps show up as one-click "Register" cards in every clinic's **Admin Sett
 
 ## Before you open the PR
 
-1. **Build** against the [sandbox](https://app.comprehendpt.com/vendor-sandbox.html) until `provide`, linking, and `subscribe` all behave.
+1. **Build** against the [sandbox](https://app.comprehendpt.com/vendor-sandbox.html) until `setContext`, linking, and `subscribe` all behave.
 2. **Pilot** with at least one clinic: their admin registers your launch URL directly, confirms their BAA with you, enables it, and you're live for that group. We'll ask who.
 3. Have a **BAA template** ready to sign with clinics, and a public page that tells a clinic admin how to get it (that's your `docs` URL).
 
@@ -14,10 +14,10 @@ We check every item; a PR that fails one gets a comment, not a merge.
 
 - Loads `comprehend.js` from `https://app.comprehendpt.com/comprehend.js` — no vendored copy.
 - Launch URL is `https`, on the declared `embedOrigin`, and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc`, no `X-Frame-Options: DENY`.
-- Calls `provide` with `patientId`, `patientName`, and a stable `patientRef`; opens the linked chart when `patient.ref` is present; handles `patient` being `null`.
+- Calls `setContext` with your patient's `id` and `name`; opens the linked chart when `yourId` is present; handles `patient` being `null`.
 - Shows the Comprehend patient name next to your open chart so a mismatch is visible to the clinician.
-- Declares subscriptions once (not on every render); each structure ≤ 200 leaves.
-- Provides only what a clinician would want in the note; markdown ≤ 8 KB.
+- Builds subscriptions from the patient's own data and re-declares them on each `patient` event (tearing down the previous one); each structure ≤ 200 leaves.
+- Sets only what a clinician would want in the note; markdown ≤ 8 KB.
 
 A listing means **Comprehend** reviewed those points. It never stands in for a clinic's BAA with you — every clinic confirms its own before enabling your app.
 

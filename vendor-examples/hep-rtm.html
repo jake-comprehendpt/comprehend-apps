@@ -7,35 +7,29 @@
 <style>
   body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 0; color: #1f2937; background: #f8fafc; }
   header { background: #0f766e; color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
-  header b { font-size: 15px; }
-  header small { opacity: .85; }
+  header b { font-size: 15px; } header small { opacity: .85; }
   main { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px; }
   .roster button { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 6px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
   .roster button.active { border-color: #0f766e; background: #ecfdf5; }
   .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
   .card h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
   .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #e5e7eb; }
-  .pill.ok { background: #d1fae5; color: #065f46; }
-  .pill.warn { background: #fee2e2; color: #991b1b; }
+  .pill.ok { background: #d1fae5; color: #065f46; } .pill.warn { background: #fee2e2; color: #991b1b; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; } td, th { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+  td.yes { color: #065f46; font-weight: 600; } td.no { color: #9ca3af; }
   pre { background: #f3f4f6; padding: 8px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; margin: 0; }
   .log div { font-family: ui-monospace, monospace; font-size: 11px; color: #4b5563; }
 </style>
 </head>
 <body>
-<header>
-  <b>Example HEP app</b>
-  <small id="link">not connected to Comprehend</small>
-</header>
+<header><b>Example HEP app</b><small id="link">not connected to Comprehend</small></header>
 <main>
   <aside class="roster" id="roster"></aside>
   <section>
-    <div class="card">
-      <h3>Home program — last 7 days</h3>
-      <div id="summary"></div>
-    </div>
+    <div class="card"><h3>Home program — last 7 days</h3><div id="summary"></div></div>
     <div class="card">
       <h3>From today's visit <span class="pill" id="pushState">waiting for Comprehend</span></h3>
-      <pre id="answers">—</pre>
+      <div id="answers">—</div>
     </div>
     <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
   </section>
@@ -44,13 +38,17 @@
 <!-- On your own site use the absolute URL: https://app.comprehendpt.com/comprehend.js -->
 <script src="../comprehend.js"></script>
 <script>
-  // ---- the vendor's own world: a roster and adherence data ----------------
+  // ---- the vendor's own world: a roster, each patient's program, adherence -------------
   const ROSTER = [
-    { id: 'L-1001', name: 'Ann Kim',   adherence: '5/7', pain: '6 → 3', flagged: 'skipped hip hinge ×3 (reports knee pain)' },
-    { id: 'L-1002', name: 'Bob Smith', adherence: '2/7', pain: '4 → 5', flagged: 'no sessions since Tuesday' },
-    { id: 'L-1003', name: 'Kate Nguyen', adherence: '7/7', pain: '2 → 1', flagged: 'none' },
+    { id: 'L-1001', name: 'Ann Kim',     adherence: '5/7', pain: '6 → 3', flagged: 'skipped hip hinge ×3 (reports knee pain)',
+      program: ['Sit-to-stand', 'Hip hinge', 'Step-ups', 'Glute bridge'] },
+    { id: 'L-1002', name: 'Bob Smith',   adherence: '2/7', pain: '4 → 5', flagged: 'no sessions since Tuesday',
+      program: ['Heel raises', 'Single-leg balance', 'Ankle alphabet'] },
+    { id: 'L-1003', name: 'Kate Nguyen', adherence: '7/7', pain: '2 → 1', flagged: 'none',
+      program: ['Bird dog', 'Dead bug', 'Cat-camel'] },
   ];
   let current = null;
+  let unsubscribe = null;
 
   const $ = (id) => document.getElementById(id);
   const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
@@ -59,61 +57,68 @@
     $('roster').innerHTML = ROSTER.map(p =>
       `<button class="${current && current.id === p.id ? 'active' : ''}" data-id="${p.id}">${p.name}<br><small>${p.id}</small></button>`).join('');
     $('summary').innerHTML = current
-      ? `<div><b>${current.name}</b> · adherence ${current.adherence} · pain ${current.pain}<br>Flagged: ${current.flagged}</div>`
+      ? `<div><b>${current.name}</b> · adherence ${current.adherence} · pain ${current.pain}<br>Flagged: ${current.flagged}<br>Program: ${current.program.join(', ')}</div>`
       : '<em>Select a patient</em>';
     const ours = comprehend.patient;
     $('link').textContent = !comprehend.ready ? 'not connected to Comprehend'
       : !ours ? 'Comprehend: no chart open'
-      : `Comprehend: ${ours.name}${ours.ref ? ' · linked ' + ours.ref : ''}`;
+      : `Comprehend: ${ours.name}${ours.yourId ? ' · linked ' + ours.yourId : ''}`;
   }
   $('roster').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
-    openChart(ROSTER.find(p => p.id === b.dataset.id));
+    current = ROSTER.find(p => p.id === b.dataset.id); render(); sync(comprehend.patient);
   });
 
-  function openChart(p) { current = p; render(); sync(); }
+  // ---- EVENTS: one handler. reason = 'ready' | 'changed' | 'refresh' ---------------------
+  comprehend.on('patient', (patient, { reason }) => {
+    log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
+    if (patient && patient.yourId) {                          // linked before → open our chart, zero clicks
+      const mine = ROSTER.find(p => p.id === patient.yourId); if (mine) current = mine;
+    }
+    render();
+    sync(patient);
+  });
+  comprehend.on('error', ({ code }) => {
+    $('pushState').textContent = code; $('pushState').className = 'pill warn';
+    log(`error ← ${code}`);   // no names, no details: the clinician sees those in Comprehend
+  });
 
-  // ---- the contract: 1) provide whenever both sides have a chart open -----
-  function sync() {
-    const theirs = comprehend.patient;
-    if (!theirs || !current) return;
-    const md = `## HEP app — last 7 days for ${current.name}
+  // ---- CONTENT + QUESTIONS, both per patient ----------------------------------------------
+  function sync(patient) {
+    if (!patient || !current) return;
+
+    // 1. Tell Comprehend what we know about the patient WE have open. This is also the link.
+    patient.setContext(`## Home program — last 7 days for ${current.name}
 - Adherence: ${current.adherence} sessions
 - Pain trend (self-reported): ${current.pain}
-- Flagged: ${current.flagged}`;
-    comprehend.provide(md, { patientId: theirs.id, patientName: current.name, patientRef: current.id });
-    log(`provide → patientId=${theirs.id} patientName="${current.name}" patientRef=${current.id}`);
+- Flagged: ${current.flagged}
+- Program: ${current.program.join(', ')}`, { id: current.id, name: current.name });
+    log(`setContext → ${patient.id} as "${current.name}" (${current.id})`);
+
+    // 2. Ask about THIS patient's program. Rebuilt on every patient event — the
+    //    questions are only useful if they're about the exercises this patient has.
+    if (unsubscribe) unsubscribe();
+    const performed = {};
+    for (const ex of current.program) performed[ex] = `boolean — was "${ex}" performed or reviewed in today's visit?`;
+    unsubscribe = comprehend.subscribe({
+      performed,                                                              // one boolean per prescribed exercise
+      changes: [{ exercise: { _choices: current.program.concat(['(new exercise)']) },
+                  change:   { _choices: ['progressed', 'regressed', 'removed', 'added', 'kept'] },
+                  dosage:   { _description: 'sets x reps or time, if the PT stated one' } }],
+      adherence_report: 'string — what the patient said about doing the home program',
+      pain_today:       'number — pain reported today, 0-10, or null',
+    }, (answers, forPatient, meta) => {
+      if (comprehend.patient && comprehend.patient.id !== forPatient.id) { log(`stale answers for ${forPatient.id} ignored`); return; }
+      $('pushState').textContent = `v${meta.version}${meta.partial ? ' (partial)' : ''}`; $('pushState').className = 'pill ok';
+      const rows = Object.entries(answers.performed || {}).map(([ex, done]) =>
+        `<tr><td>${ex}</td><td class="${done ? 'yes' : 'no'}">${done === null ? '—' : done ? 'performed' : 'not today'}</td></tr>`).join('');
+      $('answers').innerHTML = `<table><tr><th>Exercise</th><th>Today</th></tr>${rows}</table>
+        <p style="margin:8px 0 0;font-size:13px"><b>Adherence:</b> ${answers.adherence_report ?? '—'} · <b>Pain today:</b> ${answers.pain_today ?? '—'}</p>
+        <pre style="margin-top:8px">${JSON.stringify(answers.changes || [], null, 1)}</pre>`;
+      log(`answers ← v${meta.version} for ${forPatient.name || forPatient.id}`);
+    });
+    log(`subscribe → ${current.program.length} exercise booleans + changes list for ${current.name}`);
   }
-
-  comprehend.on('ready', ({ patient }) => { log(`ready · Comprehend has ${patient ? patient.name : 'no chart'}`); onComprehendPatient(patient); });
-  comprehend.on('patient', ({ patient }) => { log(`patient → ${patient ? patient.name : 'none'}`); onComprehendPatient(patient); });
-
-  function onComprehendPatient(patient) {
-    if (patient && patient.ref) {
-      const mine = ROSTER.find(p => p.id === patient.ref);       // linked before → zero clicks
-      if (mine) { current = mine; }
-    }
-    render(); sync();
-  }
-
-  // ---- 2) subscribe once; Comprehend pushes when the clinician acts -------
-  comprehend.subscribe({
-    rtm_mentioned: 'boolean — was RTM / remote monitoring discussed today?',
-    pain: {
-      now:  { _type: 'number', _description: 'pain the patient reported today, 0-10, or null' },
-      site: { _type: 'string', _description: 'primary painful region as the PT named it' },
-    },
-    hep_changes: [{
-      exercise: { _description: 'exercise name as the PT said it' },
-      action:   { _choices: ['added', 'removed', 'modified', 'kept'] },
-      dosage:   { _description: 'sets x reps or time, if stated' },
-    }],
-  }, ({ patientId, answers, contextVersion, partial }) => {
-    if (comprehend.patient && comprehend.patient.id !== patientId) { log(`stale push for ${patientId} ignored`); return; }
-    $('pushState').textContent = `v${contextVersion}${partial ? ' (partial)' : ''}`; $('pushState').className = 'pill ok';
-    $('answers').textContent = JSON.stringify(answers, null, 2);
-    log(`answers ← v${contextVersion}`);
-  }, (err) => { $('pushState').textContent = err.code; $('pushState').className = 'pill warn'; log(`error ← ${err.code}: ${err.message}`); });
 
   render();
 </script>

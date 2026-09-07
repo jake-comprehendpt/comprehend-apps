@@ -117,7 +117,13 @@
         var wasReady = ready;
         current = makeHandle(msg.patient);
         contextVersion = msg.contextVersion || 0;
-        if (!wasReady) { ready = true; outbox.splice(0).forEach(post); }
+        if (!wasReady) {
+          ready = true;
+          // Automatic ack: proves the script loaded and origin pinning matched, even
+          // if your app has nothing to say yet. The host uses it for diagnostics only.
+          post({ type: 'comprehend:ack', version: 3, href: String((global.location && global.location.href) || '').split('?')[0] });
+          outbox.splice(0).forEach(post);
+        }
         emit('patient', current, { reason: msg.reason || (wasReady ? 'changed' : 'ready') });
         break;
       }

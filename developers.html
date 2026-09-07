@@ -67,62 +67,68 @@
     <p class="fine" style="margin-top:14px">No account, no SDK install, no npm. One hosted script, two events, and the questions you choose to ask.</p>
    </div>
    <figure class="wire" aria-label="Wireframe: a vendor app running inside Comprehend's Apps tab">
-    <svg viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg" role="img">
+    <svg viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui">
       <!-- browser window -->
       <rect x="8" y="8" width="624" height="404" rx="10" fill="#fff" stroke="#cbd5e1"/>
-      <rect x="8" y="8" width="624" height="26" rx="10" fill="#f1f5f9"/>
-      <rect x="8" y="24" width="624" height="10" fill="#f1f5f9"/>
+      <rect x="8" y="8" width="624" height="26" rx="10" fill="#f1f5f9"/><rect x="8" y="24" width="624" height="10" fill="#f1f5f9"/>
       <circle cx="24" cy="21" r="4" fill="#cbd5e1"/><circle cx="38" cy="21" r="4" fill="#cbd5e1"/><circle cx="52" cy="21" r="4" fill="#cbd5e1"/>
-      <rect x="220" y="14" width="200" height="14" rx="7" fill="#e2e8f0"/>
-      <text x="320" y="24.5" font-size="9" fill="#64748b" text-anchor="middle" font-family="system-ui">app.comprehendpt.com</text>
-      <!-- Comprehend sidebar -->
-      <rect x="8" y="34" width="54" height="378" fill="#0f766e"/>
-      <rect x="21" y="48" width="28" height="28" rx="6" fill="#fff" opacity=".9"/>
-      <g fill="#fff" opacity=".55"><rect x="25" y="96" width="20" height="6" rx="3"/><rect x="25" y="116" width="20" height="6" rx="3"/><rect x="25" y="136" width="20" height="6" rx="3"/><rect x="25" y="156" width="20" height="6" rx="3"/></g>
-      <rect x="21" y="176" width="28" height="22" rx="5" fill="#fff" opacity=".95"/>
-      <text x="35" y="191" font-size="7" font-weight="700" fill="#0f766e" text-anchor="middle" font-family="system-ui">APPS</text>
-      <!-- note column -->
-      <rect x="76" y="48" width="240" height="14" rx="4" fill="#0f172a" opacity=".85"/>
-      <text x="80" y="58.5" font-size="9" fill="#fff" font-family="system-ui">Daily Note · Ann K. · Visit 6</text>
-      <g fill="#e2e8f0"><rect x="76" y="72" width="70" height="8" rx="4" fill="#94a3b8"/><rect x="76" y="86" width="230" height="6" rx="3"/><rect x="76" y="97" width="210" height="6" rx="3"/><rect x="76" y="108" width="225" height="6" rx="3"/>
-        <rect x="76" y="128" width="60" height="8" rx="4" fill="#94a3b8"/><rect x="76" y="142" width="235" height="6" rx="3"/><rect x="76" y="153" width="190" height="6" rx="3"/>
-        <rect x="76" y="173" width="50" height="8" rx="4" fill="#94a3b8"/><rect x="76" y="187" width="220" height="6" rx="3"/><rect x="76" y="198" width="230" height="6" rx="3"/><rect x="76" y="209" width="160" height="6" rx="3"/></g>
-      <!-- attributed line from the vendor -->
-      <rect x="76" y="226" width="240" height="30" rx="5" fill="#fff7ed" stroke="#fdba74"/>
-      <rect x="82" y="233" width="160" height="6" rx="3" fill="#fdba74"/><rect x="82" y="244" width="120" height="6" rx="3" fill="#fed7aa"/>
-      <text x="312" y="251" font-size="7" fill="#c2410c" text-anchor="end" font-family="system-ui">Source: your app</text>
-      <g fill="#e2e8f0"><rect x="76" y="270" width="230" height="6" rx="3"/><rect x="76" y="281" width="200" height="6" rx="3"/></g>
-      <!-- right column: tabs -->
-      <g font-size="9" font-family="system-ui" fill="#64748b"><text x="340" y="58">Transcript</text><text x="396" y="58">Note</text><text x="426" y="58">Chat</text><text x="456" y="58" fill="#0f766e" font-weight="700">Apps</text></g>
-      <rect x="454" y="63" width="26" height="2.5" fill="#0f766e"/>
-      <line x1="334" y1="66" x2="624" y2="66" stroke="#e2e8f0"/>
+      <rect x="180" y="14" width="200" height="14" rx="7" fill="#e2e8f0"/>
+      <text x="280" y="24.5" font-size="9" fill="#64748b" text-anchor="middle">the clinic's EMR</text>
+      <!-- EMR: left nav (blue-gray, not ours) -->
+      <rect x="8" y="34" width="52" height="378" fill="#334155"/>
+      <rect x="20" y="48" width="28" height="12" rx="3" fill="#94a3b8"/>
+      <g fill="#64748b"><rect x="22" y="80" width="24" height="6" rx="3"/><rect x="22" y="98" width="24" height="6" rx="3"/><rect x="22" y="116" width="24" height="6" rx="3" fill="#cbd5e1"/><rect x="22" y="134" width="24" height="6" rx="3"/><rect x="22" y="152" width="24" height="6" rx="3"/></g>
+      <!-- EMR: note page -->
+      <text x="72" y="52" font-size="8" fill="#64748b">Patients ▸ Ann K. ▸ Daily Note · Visit 6</text>
+      <rect x="72" y="60" width="288" height="1" fill="#e2e8f0"/>
+      <g fill="#e2e8f0"><rect x="72" y="72" width="60" height="8" rx="4" fill="#94a3b8"/><rect x="72" y="86" width="280" height="6" rx="3"/><rect x="72" y="97" width="250" height="6" rx="3"/><rect x="72" y="108" width="270" height="6" rx="3"/>
+        <rect x="72" y="128" width="56" height="8" rx="4" fill="#94a3b8"/><rect x="72" y="142" width="284" height="6" rx="3"/><rect x="72" y="153" width="230" height="6" rx="3"/>
+        <rect x="72" y="173" width="40" height="8" rx="4" fill="#94a3b8"/><rect x="72" y="187" width="270" height="6" rx="3"/><rect x="72" y="198" width="285" height="6" rx="3"/><rect x="72" y="209" width="190" height="6" rx="3"/></g>
+      <!-- the line Comprehend wrote from the vendor's data -->
+      <rect x="72" y="226" width="288" height="30" rx="5" fill="#fff7ed" stroke="#fdba74"/>
+      <rect x="78" y="233" width="190" height="6" rx="3" fill="#fdba74"/><rect x="78" y="244" width="140" height="6" rx="3" fill="#fed7aa"/>
+      <text x="356" y="251" font-size="7" fill="#c2410c" text-anchor="end">Source: your app</text>
+      <g fill="#e2e8f0"><rect x="72" y="270" width="280" height="6" rx="3"/><rect x="72" y="281" width="240" height="6" rx="3"/><rect x="72" y="292" width="262" height="6" rx="3"/></g>
+      <text x="216" y="330" font-size="10" fill="#c2410c" font-weight="700" text-anchor="middle">the EMR note, with your data in it ↑</text>
+      <!-- EMR: form controls -->
+      <rect x="72" y="380" width="70" height="18" rx="4" fill="#334155"/><text x="107" y="392" font-size="8" fill="#fff" text-anchor="middle">Sign note</text>
+      <rect x="150" y="380" width="60" height="18" rx="4" fill="#fff" stroke="#cbd5e1"/>
+      <!-- Comprehend side panel -->
+      <rect x="376" y="34" width="256" height="378" fill="#f8fafc" stroke="#e2e8f0"/>
+      <rect x="376" y="34" width="256" height="34" fill="#0f766e"/>
+      <rect x="386" y="43" width="16" height="16" rx="4" fill="#fff"/><text x="394" y="55" font-size="9" font-weight="800" fill="#0f766e" text-anchor="middle">C</text>
+      <text x="408" y="55.5" font-size="10" font-weight="700" fill="#fff">Comprehend</text>
+      <!-- recorder / controls row -->
+      <circle cx="600" cy="51" r="9" fill="#fff"/><circle cx="600" cy="51" r="4.5" fill="#dc2626"/>
+      <text x="583" y="54.5" font-size="8" fill="#fff" text-anchor="end">12:41 recording</text>
+      <rect x="386" y="76" width="236" height="20" rx="5" fill="#fff" stroke="#cbd5e1"/>
+      <rect x="392" y="82" width="8" height="8" rx="2" fill="#0f766e"/><rect x="404" y="83" width="70" height="6" rx="3" fill="#cbd5e1"/>
+      <rect x="560" y="80" width="56" height="12" rx="6" fill="#0f766e"/><text x="588" y="89" font-size="7.5" fill="#fff" text-anchor="middle">Generate note</text>
+      <!-- tabs -->
+      <g font-size="8.5" fill="#64748b"><text x="388" y="114">Transcript</text><text x="432" y="114">Note</text><text x="456" y="114">Chat</text><text x="480" y="114" fill="#0f766e" font-weight="700">Apps</text></g>
+      <rect x="478" y="118" width="24" height="2.5" fill="#0f766e"/>
+      <line x1="386" y1="121" x2="622" y2="121" stroke="#e2e8f0"/>
       <!-- app pills -->
-      <rect x="336" y="76" width="54" height="16" rx="8" fill="#fff" stroke="#2563eb"/><text x="363" y="87" font-size="8" fill="#2563eb" text-anchor="middle" font-family="system-ui">RTM app</text>
-      <rect x="396" y="76" width="54" height="16" rx="8" fill="#ea580c"/><text x="423" y="87" font-size="8" fill="#fff" text-anchor="middle" font-family="system-ui" font-weight="700">HEP app</text>
-      <rect x="456" y="76" width="50" height="16" rx="8" fill="#fff" stroke="#7c3aed"/><text x="481" y="87" font-size="8" fill="#7c3aed" text-anchor="middle" font-family="system-ui">Sensor</text>
-      <text x="622" y="87" font-size="8" fill="#0f766e" text-anchor="end" font-family="system-ui">Refresh</text>
+      <rect x="386" y="130" width="50" height="15" rx="7.5" fill="#fff" stroke="#2563eb"/><text x="411" y="140.5" font-size="7.5" fill="#2563eb" text-anchor="middle">RTM app</text>
+      <rect x="441" y="130" width="50" height="15" rx="7.5" fill="#ea580c"/><text x="466" y="140.5" font-size="7.5" fill="#fff" text-anchor="middle" font-weight="700">HEP app</text>
+      <rect x="496" y="130" width="44" height="15" rx="7.5" fill="#fff" stroke="#7c3aed"/><text x="518" y="140.5" font-size="7.5" fill="#7c3aed" text-anchor="middle">Sensor</text>
+      <text x="622" y="140.5" font-size="7.5" fill="#0f766e" text-anchor="end">Refresh</text>
       <!-- the vendor's UI, framed -->
-      <rect x="336" y="100" width="288" height="302" rx="8" fill="#fff" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <rect x="337" y="101" width="286" height="26" rx="8" fill="#ea580c"/>
-      <rect x="337" y="118" width="286" height="9" fill="#ea580c"/>
-      <rect x="348" y="110" width="84" height="8" rx="4" fill="#fff" opacity=".9"/>
-      <rect x="560" y="109" width="54" height="10" rx="5" fill="#fff" opacity=".35"/>
-      <text x="348" y="150" font-size="9" fill="#0f172a" font-family="system-ui" font-weight="700">Ann K. · Home program</text>
-      <g font-family="system-ui" font-size="8" fill="#334155">
-        <rect x="348" y="160" width="10" height="10" rx="2" fill="#ea580c"/><rect x="364" y="162" width="110" height="6" rx="3" fill="#cbd5e1"/><rect x="560" y="162" width="52" height="6" rx="3" fill="#e2e8f0"/>
-        <rect x="348" y="178" width="10" height="10" rx="2" fill="#ea580c"/><rect x="364" y="180" width="90" height="6" rx="3" fill="#cbd5e1"/><rect x="560" y="180" width="52" height="6" rx="3" fill="#e2e8f0"/>
-        <rect x="348" y="196" width="10" height="10" rx="2" fill="#fff" stroke="#ea580c"/><rect x="364" y="198" width="120" height="6" rx="3" fill="#cbd5e1"/><rect x="560" y="198" width="52" height="6" rx="3" fill="#e2e8f0"/>
-        <rect x="348" y="214" width="10" height="10" rx="2" fill="#ea580c"/><rect x="364" y="216" width="100" height="6" rx="3" fill="#cbd5e1"/><rect x="560" y="216" width="52" height="6" rx="3" fill="#e2e8f0"/>
-      </g>
-      <text x="348" y="248" font-size="9" fill="#0f172a" font-family="system-ui" font-weight="700">Adherence · last 7 days</text>
-      <g fill="#fdba74"><rect x="348" y="300" width="22" height="30"/><rect x="378" y="285" width="22" height="45"/><rect x="408" y="310" width="22" height="20"/><rect x="438" y="270" width="22" height="60" fill="#ea580c"/><rect x="468" y="292" width="22" height="38"/><rect x="498" y="278" width="22" height="52"/><rect x="528" y="322" width="22" height="8"/></g>
-      <line x1="348" y1="330" x2="612" y2="330" stroke="#cbd5e1"/>
-      <rect x="348" y="348" width="264" height="42" rx="6" fill="#fff7ed"/>
-      <text x="356" y="362" font-size="8" fill="#9a3412" font-family="system-ui" font-weight="700">From today's visit</text>
-      <rect x="356" y="370" width="180" height="6" rx="3" fill="#fdba74"/><rect x="356" y="380" width="130" height="6" rx="3" fill="#fed7aa"/>
-      <!-- callouts -->
-      <text x="480" y="136" font-size="10" fill="#9a3412" font-family="system-ui" font-weight="700" text-anchor="middle">← your app, as it is</text>
-      <text x="196" y="300" font-size="10" fill="#0f766e" font-family="system-ui" font-weight="700" text-anchor="middle">the note, with your data in it ↑</text>
+      <rect x="386" y="153" width="236" height="250" rx="7" fill="#fff" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <rect x="387" y="154" width="234" height="22" rx="7" fill="#ea580c"/><rect x="387" y="168" width="234" height="8" fill="#ea580c"/>
+      <rect x="396" y="161" width="70" height="7" rx="3.5" fill="#fff" opacity=".9"/><rect x="566" y="160" width="48" height="9" rx="4.5" fill="#fff" opacity=".35"/>
+      <text x="504" y="192" font-size="9" fill="#9a3412" font-weight="700" text-anchor="middle">← your app, as it is</text>
+      <text x="396" y="210" font-size="8.5" fill="#0f172a" font-weight="700">Ann K. · Home program</text>
+      <g><rect x="396" y="220" width="9" height="9" rx="2" fill="#ea580c"/><rect x="410" y="222" width="90" height="5" rx="2.5" fill="#cbd5e1"/><rect x="566" y="222" width="46" height="5" rx="2.5" fill="#e2e8f0"/>
+         <rect x="396" y="236" width="9" height="9" rx="2" fill="#ea580c"/><rect x="410" y="238" width="74" height="5" rx="2.5" fill="#cbd5e1"/><rect x="566" y="238" width="46" height="5" rx="2.5" fill="#e2e8f0"/>
+         <rect x="396" y="252" width="9" height="9" rx="2" fill="#fff" stroke="#ea580c"/><rect x="410" y="254" width="100" height="5" rx="2.5" fill="#cbd5e1"/><rect x="566" y="254" width="46" height="5" rx="2.5" fill="#e2e8f0"/>
+         <rect x="396" y="268" width="9" height="9" rx="2" fill="#ea580c"/><rect x="410" y="270" width="82" height="5" rx="2.5" fill="#cbd5e1"/><rect x="566" y="270" width="46" height="5" rx="2.5" fill="#e2e8f0"/></g>
+      <text x="396" y="296" font-size="8.5" fill="#0f172a" font-weight="700">Adherence · last 7 days</text>
+      <g fill="#fdba74"><rect x="396" y="334" width="18" height="24"/><rect x="420" y="322" width="18" height="36"/><rect x="444" y="342" width="18" height="16"/><rect x="468" y="310" width="18" height="48" fill="#ea580c"/><rect x="492" y="328" width="18" height="30"/><rect x="516" y="316" width="18" height="42"/><rect x="540" y="352" width="18" height="6"/></g>
+      <line x1="396" y1="358" x2="612" y2="358" stroke="#cbd5e1"/>
+      <rect x="396" y="368" width="216" height="28" rx="5" fill="#fff7ed"/>
+      <text x="402" y="380" font-size="7.5" fill="#9a3412" font-weight="700">From today's visit</text>
+      <rect x="402" y="386" width="150" height="5" rx="2.5" fill="#fdba74"/>
     </svg>
     <div class="wire-trio">
       <svg viewBox="0 0 180 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RTM app wireframe">
@@ -143,7 +149,7 @@
         <text x="90" y="90" font-size="7" fill="#6d28d9" text-anchor="middle" font-family="system-ui">Sensor · force plate, dynamometer, wearable</text>
       </svg>
     </div>
-    <figcaption class="fine">Your UI, unchanged, in Comprehend's Apps tab — next to the note it feeds.</figcaption>
+    <figcaption class="fine">The clinic's EMR on the left; Comprehend's side panel on the right — recorder, then your app, as it is. Your data lands in the EMR note.</figcaption>
    </figure>
   </div>
 

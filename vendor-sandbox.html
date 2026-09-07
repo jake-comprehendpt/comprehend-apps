@@ -168,7 +168,7 @@
     if (state.gotMessage) return;
     state.gotMessage = true; clearTimeout(watchdog);
     framingEl.className = 'status ok'; framingEl.style.display = 'block';
-    framingEl.textContent = `Your page loads inside ${location.origin} and is talking to us.`;
+    framingEl.textContent = `Your page loads inside ${location.origin} and comprehend.js is talking to us. Pick the same patient in your app to see context and answers flow.`;
   }
 
   // ---- server-side header check ------------------------------------------------
@@ -321,6 +321,7 @@
         renderSubs(); evaluate('subscribe', msg.id); break;
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
+      case 'comprehend:ack': log('in', `ack · comprehend.js v${msg.version} loaded in ${msg.href || 'your page'}`); break;
     }
   });
 

@@ -57,9 +57,13 @@
       : `Comprehend: ${ours.name}${ours.yourId ? ' · linked ' + ours.yourId : ''}`;
   }
 
+  const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
+  const byName = (name) => ROSTER.find(p => nameKey(p.name) === nameKey(name)) || null;
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
-    if (patient && patient.yourId) { current = ROSTER.find(p => p.id === patient.yourId) || current; $('pick').value = current ? current.id : ''; }
+    if (patient && patient.yourId) { current = ROSTER.find(p => p.id === patient.yourId) || current; }
+    else if (patient && !current) { current = byName(patient.name); }        // prefill by name until linked
+    $('pick').value = current ? current.id : '';
     render(); sync(patient);
   });
   comprehend.on('error', ({ code }) => { $('answers').textContent = code; log(`error ← ${code}`); });

@@ -70,10 +70,14 @@
   });
 
   // ---- EVENTS: one handler. reason = 'ready' | 'changed' | 'refresh' ---------------------
+  const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
+  const byName = (name) => ROSTER.find(p => nameKey(p.name) === nameKey(name)) || null;
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
     if (patient && patient.yourId) {                          // linked before → open our chart, zero clicks
       const mine = ROSTER.find(p => p.id === patient.yourId); if (mine) current = mine;
+    } else if (patient && !current) {                          // not linked yet → prefill by name (the clinician can still change it)
+      current = byName(patient.name);
     }
     render();
     sync(patient);

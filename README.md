@@ -60,6 +60,10 @@ comprehend.patient;                           // the current handle, or null
 
 `reason` tells you why you're hearing about the patient: `ready` (your frame just loaded), `changed` (the clinician switched charts), `refresh` (the clinician is about to generate a note or pressed *Refresh apps* — send your latest). Same handler every time. Calls made before the handshake are queued — nothing to gate on.
 
+**Ready, without a ready event.** The first `patient` event fires exactly once per frame load, before anything else, with `reason: 'ready'` — *even when no chart is open* (`patient` is `null`). Register callbacks whenever you like: before the handshake, `subscribe` and handle calls queue and flush on ready; after it, a new `patient` listener is invoked immediately with the current state. Nothing can be missed.
+
+**Your id comes back.** `patient.yourId` is the `id` you passed to `setContext` for that patient last time. It is stored on Comprehend's patient record, so it survives devices and sessions — short-circuit on `byId(patient.yourId)` before you look at `patient.name`.
+
 ## Surface
 
 | Surface | Notes |

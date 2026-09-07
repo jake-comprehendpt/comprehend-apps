@@ -109,7 +109,7 @@
     </div></div>
 
     <div class="cols" style="margin-top:8px">
-      <div class="card"><h3>Nothing to gate on</h3><p>Calls made before the handshake are queued and flushed. No <code>ready</code> boilerplate — the first <code>patient</code> event <em>is</em> ready.</p></div>
+      <div class="card"><h3>Ready, without a ready event</h3><p>The first <code>patient</code> event fires exactly once per load, first, with <code>reason: 'ready'</code> — even when no chart is open (<code>patient</code> is <code>null</code>). Register callbacks whenever you like: before the handshake they queue; after it, a new listener is called immediately with the current state. Nothing can be missed.</p></div>
       <div class="card"><h3>Typed, nested, lists</h3><p>Structures support nesting, enums (<code>_choices</code>), lists sized to the transcript, and <code>boolean / number / string / string[] / number[]</code>.</p></div>
       <div class="card"><h3>Push, not poll</h3><p>You never ask on a timer. We compute when the clinician acts and cache when nothing changed. Every answer names the patient it's for.</p></div>
     </div>
@@ -120,7 +120,7 @@
     <p class="lead">Two events, two content calls, one question call. That's all of it.</p>
     <table>
       <tr><th>Events — we tell you</th><th></th></tr>
-      <tr><td><code>comprehend.on('patient', (patient, { reason }) =&gt; …)</code></td><td><code>patient</code> is a handle <code>{ id, name, dob, yourId, setContext(), clearContext() }</code> or <code>null</code> when no chart is open. <code>reason</code> is <code>ready</code>, <code>changed</code>, or <code>refresh</code>. Late listeners are called immediately with the current state.</td></tr>
+      <tr><td><code>comprehend.on('patient', (patient, { reason }) =&gt; …)</code></td><td><code>patient</code> is a handle <code>{ id, name, dob, yourId, setContext(), clearContext() }</code> or <code>null</code> when no chart is open. <code>reason</code> is <code>ready</code> (fires exactly once per load, first, even with <code>null</code>), <code>changed</code>, or <code>refresh</code>. Late listeners are called immediately with the current state. <code>yourId</code> is the <code>id</code> you gave <code>setContext</code> last time — stored on our patient record, so it survives devices and sessions; short-circuit on it.</td></tr>
       <tr><td><code>comprehend.on('error', ({ code }) =&gt; …)</code></td><td>Codes only: <code>STALE_PATIENT</code>, <code>CONTEXT_REJECTED</code>, <code>BAD_STRUCTURE</code>, <code>TOO_MANY_SUBSCRIPTIONS</code>. Reasons and names go to the clinician, not to you.</td></tr>
       <tr><th>Content — you tell us</th><th></th></tr>
       <tr><td><code>patient.setContext(markdown, { id, name })</code></td><td>Replaces your context for that patient. Markdown, ≤ 8 KB. <code>{ id, name }</code> is <em>your</em> patient; <code>name</code> is required and must resemble the chart's name; <code>id</code> comes back as <code>yourId</code> next time. The handle carries our patient id for you — a handle from a chart the clinician has left is dropped with <code>STALE_PATIENT</code>.</td></tr>

@@ -62,8 +62,14 @@
         (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). This sandbox is a web page, so it can only prove your page loads from
         <code id="ourOrigin"></code>. It <b>cannot</b> impersonate the extension origin — check your headers for that:
       </div>
-      <pre id="framingCurl" style="margin-top:8px;max-height:none"></pre>
-      <div class="status">Expected: <code>content-security-policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> and no <code>x-frame-options: DENY</code> / <code>SAMEORIGIN</code>.</div>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="checkHeaders" title="Comprehend's server fetches your URL (HEAD, headers only) and evaluates frame-ancestors / X-Frame-Options for both origins">Check my headers</button>
+      </div>
+      <div id="headerResults" style="margin-top:8px"></div>
+      <details style="margin-top:8px"><summary class="status">Or check them yourself</summary>
+        <pre id="framingCurl" style="margin-top:8px;max-height:none"></pre>
+        <div class="status">Expected: <code>content-security-policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> and no <code>x-frame-options: DENY</code> / <code>SAMEORIGIN</code>.</div>
+      </details>
     </div>
 
     <div class="card">
@@ -159,6 +165,41 @@
     framingEl.className = 'status ok'; framingEl.style.display = 'block';
     framingEl.textContent = `Your page loads inside ${location.origin} and is talking to us. (The extension origin still needs the header check below.)`;
   }
+
+  // ---- server-side header check -----------------------------------------------
+  // Only a server can read another origin's headers. Comprehend's API fetches
+  // the URL (HEAD, headers only, https + public hosts only) and evaluates
+  // framing for every origin we embed from. Public endpoint, no login.
+  const API_BASE = location.host === 'app.comprehendpt.com' ? 'https://api.app.comprehendpt.com' : 'https://api.dev.comprehendpt.com';
+  const LABELS = { 'https://app.comprehendpt.com': 'Web app', 'chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc': 'Chrome extension side panel' };
+  async function checkHeaders() {
+    const url = $('target').value.trim();
+    const out = document.getElementById('headerResults');
+    if (!/^https:\/\//.test(url)) { out.innerHTML = '<div class="status bad">Enter an https URL first — the check runs from our server, so localhost can\'t be reached from there. Use the curl below for localhost.</div>'; return; }
+    out.innerHTML = '<div class="status">Checking…</div>';
+    try {
+      const rsp = await fetch(`${API_BASE}/v1/vendorApps/checkFraming`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const body = await rsp.json();
+      if (body.error) { out.innerHTML = `<div class="status bad">${escapeHtml(body.error)}</div>`; log('err', `header check: ${body.error}`); return; }
+      const rows = Object.entries(body.results).map(([origin, r]) =>
+        `<div class="status ${r.allowed ? 'ok' : 'bad'}">${r.allowed ? '✓' : '✗'} <b>${LABELS[origin] || origin}</b> <code>${escapeHtml(origin)}</code> — ${escapeHtml(r.reason)}</div>`).join('');
+      // Real-world CSPs run to kilobytes; show only the directive that matters.
+      const trim = (k, v) => {
+        if (k !== 'content-security-policy') return v;
+        const m = v.match(/frame-ancestors[^;]*/i);
+        return m ? `${m[0]}${v.length > m[0].length ? '  … (other directives omitted)' : ''}` : `(no frame-ancestors directive; ${v.length} chars omitted)`;
+      };
+      const hdr = (k) => body.headers[k] ? `<code>${escapeHtml(k)}: ${escapeHtml(trim(k, body.headers[k]))}</code>` : `<span class="status">${escapeHtml(k)}: <i>not sent</i></span>`;
+      const allOk = Object.values(body.results).every((r) => r.allowed);
+      out.innerHTML = rows +
+        `<div class="status" style="margin-top:6px">HTTP ${body.status}${body.finalUrl !== body.url ? ` after redirect to <code>${escapeHtml(body.finalUrl)}</code>` : ''}<br>${hdr('content-security-policy')}<br>${hdr('x-frame-options')}</div>` +
+        (allOk ? '' : `<div class="status" style="margin-top:6px">Send: <code>${escapeHtml(body.recommended)}</code></div>`);
+      log(allOk ? 'out' : 'err', `header check: ${Object.values(body.results).filter((r) => r.allowed).length}/${Object.keys(body.results).length} origins allowed`);
+    } catch (e) {
+      out.innerHTML = `<div class="status bad">Check failed: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+  document.getElementById('checkHeaders').onclick = checkHeaders;
 
   // ---- log ---------------------------------------------------------------
   function log(kind, msg) {

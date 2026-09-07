@@ -18,12 +18,13 @@
   if (global.comprehend) return;
 
   var HOST_ORIGIN = 'https://app.comprehendpt.com';
-  // Dev Console loads the vendor's localhost page from a localhost host, so
-  // the host origin must follow suit. Only ever relaxed to localhost.
+  // The host tells us where it lives when it isn't production: our dev site
+  // (dev.comprehendpt.com) or a localhost Dev Console / sandbox. Anything else
+  // is ignored and we keep pinning production.
   var qs = new URLSearchParams(global.location.search);
-  var devHost = qs.get('comprehend_host');
-  if (devHost && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(devHost)) {
-    HOST_ORIGIN = devHost;
+  var altHost = qs.get('comprehend_host');
+  if (altHost && /^(https:\/\/dev\.comprehendpt\.com|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/.test(altHost)) {
+    HOST_ORIGIN = altHost;
   }
 
   var MAX_SUBSCRIPTIONS = 10;

@@ -43,6 +43,7 @@
 <div class="wrap">
   <nav>
     <b>Comprehend · Apps</b>
+    <a href="#why">Why</a>
     <a href="#how">How it works</a>
     <a href="#contract">The API</a>
     <a href="#trust">Trust</a>
@@ -52,16 +53,38 @@
   </nav>
 
   <div class="hero">
-    <h1>Put your data in the note.<br>Get the visit back.</h1>
-    <p>Comprehend is the ambient documentation platform physical therapists use to turn the visit into the note. Your product knows what happened outside the room — home exercise, remote monitoring, force plates, outcomes. Comprehend knows what was said inside it. Apps connect the two.</p>
+    <h1>Get your data into the chart.<br>In every EMR. Without integrating with any of them.</h1>
+    <p>Comprehend writes the clinical note for physical therapists inside the EMRs they already use. Plug in once and what your product knows about the patient — adherence, sensor data, outcomes — is in the note, attributed to you, at every visit. And you hear what the PT said about it.</p>
     <a class="cta" href="./vendor-sandbox.html">Open the sandbox</a>
-    <a class="cta ghost" href="#start">Start building</a>
-    <p class="fine" style="margin-top:14px">No account, no SDK install, no npm. One hosted script, two events, and the questions you choose to ask. Test against <code>localhost</code> in the sandbox before you talk to anyone.</p>
+    <a class="cta ghost" href="#why">Why partners integrate</a>
+    <p class="fine" style="margin-top:14px">No account, no SDK install, no npm. One hosted script, two events, and the questions you choose to ask. Test against <code>localhost</code> before you talk to anyone.</p>
   </div>
+
+  <section id="why">
+    <h2>Why partners integrate</h2>
+    <p class="lead">You've built the thing that happens between visits. The problem has always been getting it into the record — and getting the clinic paid for it.</p>
+    <div class="cols">
+      <div class="card"><h3>Into the chart, every EMR</h3><p>Comprehend is the documentation layer across the EMRs PT clinics run — WebPT, Raintree, Prompt, Empower, Fusion and more. Your data enters the note we write, so it lands in whatever EMR the clinic uses. One integration instead of one per EMR, and no EMR partnership required.</p></div>
+      <div class="card"><h3>Documentation that gets your customers paid</h3><p>RTM and HEP programs live or die on whether the visit note documents data review and the conversation with the patient. That's what Comprehend captures from the room. Your product shows up in the note the way billing needs it — which is the strongest retention argument you can give a clinic.</p></div>
+      <div class="card"><h3>Hear what the PT said about your product</h3><p>Ask the visit, per patient: was each prescribed exercise performed? What was progressed, regressed, dropped? What did the patient say about adherence? Answers come back to your app in the shape you asked for — the loop you've never been able to close.</p></div>
+      <div class="card"><h3>Distribution where clinicians already are</h3><p>Your app lives in the clinician's workflow — the Comprehend web app and the Chrome side panel inside the EMR — not in a portal they have to remember. A clinic enables you once; every clinician in it sees you. Listed partners get a one-click card in every clinic's admin.</p></div>
+    </div>
+
+    <h3 style="margin:26px 0 6px">What it looks like in the note</h3>
+    <p class="fine">Your markdown lands in the visit's Clinical Facts and the note is written with it in view. A typical daily note, with your product in it:</p>
+    <pre><code><span class="c">Subjective</span>
+Pt reports completing home program 5 of 7 days this week; skipped hip hinge x3 due to knee pain,
+pain trending 6 → 3 over the week per remote monitoring. <span class="s">(Source: Your App)</span>
+
+<span class="c">Plan</span>
+Reviewed RTM data with patient and discussed adherence barriers (knee pain with hip hinge);
+regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Continue remote monitoring.</code></pre>
+    <p class="fine">The PT didn't type any of that. You provided the first half; the second half is what they said out loud — and it comes back to you as answers.</p>
+  </section>
 
   <section id="how">
     <h2>How it works</h2>
-    <p class="lead">Your app runs inside Comprehend as a panel next to the clinician's note — in the web app and in the Chrome extension's side panel. A hosted script gives it a <code>comprehend</code> object with three things: <b>events</b> we send you, <b>content</b> you give us, and <b>questions</b> you ask.</p>
+    <p class="lead">Your app runs inside Comprehend as a panel next to the clinician's note — in the web app and in the Chrome side panel inside the EMR. A hosted script gives it a <code>comprehend</code> object with three things: <b>events</b> we send you, <b>content</b> you give us (that's what reaches the chart), and <b>questions</b> you ask (that's what comes back).</p>
 
     <div class="step"><div class="num">1</div><div>
       <h3 style="margin:4px 0">Load the script</h3>

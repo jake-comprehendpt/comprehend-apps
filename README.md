@@ -1,6 +1,8 @@
 # Build on Comprehend
 
-Comprehend is the ambient documentation platform physical therapists use to turn the visit into the note. **Apps** let your product run inside Comprehend, next to the note — in the web app and in the Chrome extension's side panel: you tell Comprehend what happened outside the room (home exercise, remote monitoring, force plates, outcomes) and Comprehend tells you what was said inside it.
+**Get your data into the chart. In every EMR. Without integrating with any of them.**
+
+Comprehend writes the clinical note for physical therapists inside the EMRs they already use. **Apps** let your product plug in once: what you know about the patient — adherence, sensor data, outcomes — enters the note Comprehend writes, attributed to you, in whatever EMR the clinic runs. RTM and HEP programs get documented the way billing needs. And you hear what the PT said about your product, per patient, per visit.
 
 - **Developer guide:** https://app.comprehendpt.com/developers.html
 - **Sandbox (no account needed):** https://app.comprehendpt.com/vendor-sandbox.html — a fake Comprehend around your real app, pointed at `localhost`, with a server-side check that both our origins can frame you

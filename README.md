@@ -1,8 +1,8 @@
 # Build on Comprehend
 
-**Get your data into the chart. In every EMR. Without integrating with any of them.**
+**Get in the room. Get in the chart.**
 
-Comprehend writes the clinical note for physical therapists inside the EMRs they already use. **Apps** let your product plug in once: what you know about the patient — adherence, sensor data, outcomes — enters the note Comprehend writes, attributed to you, in whatever EMR the clinic runs. RTM and HEP programs get documented the way billing needs. And you hear what the PT said about your product, per patient, per visit.
+Comprehend is the ambient AI that listens to the PT visit and writes the note inside the EMRs clinics already use (25+ of them). Bring your app in — as it is, your UI and your login, one script tag — and two things happen: what you know about the patient enters the note, attributed to you, in whatever EMR the clinic runs; and what happened in the room comes back to you, per patient, as the note is written — which exercises were performed, what was progressed or dropped, what the patient reported, the plan. RTM and HEP programs get documented the way billing needs along the way.
 
 - **Developer guide:** https://app.comprehendpt.com/developers.html
 - **Sandbox (no account needed):** https://app.comprehendpt.com/vendor-sandbox.html — a fake Comprehend around your real app, pointed at `localhost`, with a server-side check that both our origins can frame you

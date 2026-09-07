@@ -149,7 +149,7 @@ myApp.on(<span class="s">'chartOpened'</span>, sync);</code></pre>
 
     <h3 style="margin:26px 0 6px">Requirements</h3>
     <ul class="fine">
-      <li>Your launch URL must be <code>https</code> and framable by Comprehend — the web app <em>and</em> the Chrome extension's side panel: <code>Content-Security-Policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> (no <code>X-Frame-Options: DENY</code>).</li>
+      <li>Your launch URL must be <code>https</code> and framable by Comprehend — the web app <em>and</em> the Chrome extension's side panel: <code>Content-Security-Policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> (no <code>X-Frame-Options: DENY</code>). The sandbox proves the web-app half by loading you; it cannot pose as the extension, so verify that half from your headers: <code>curl -sI &lt;launch url&gt; | grep -iE 'frame-ancestors|x-frame-options'</code>.</li>
       <li>We append <code>?comprehend=1</code> to the launch URL so you can render an embedded layout.</li>
       <li>Load the script from <code>https://app.comprehendpt.com/comprehend.js</code> — don't vendor a copy; it pins the host origin and evolves with the contract.</li>
       <li>Handle <code>patient</code> being <code>null</code> and <code>ref</code> being absent. Show "Comprehend: Ann K." next to your open chart so a mismatch is visible.</li>

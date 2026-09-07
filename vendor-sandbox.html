@@ -52,6 +52,18 @@
         <button id="loadExample" title="Loads the HEP / RTM example that ships with Comprehend">Load example app</button>
       </div>
       <div class="status" id="targetStatus">Not loaded. We pin <code>event.origin</code> to your URL's origin, exactly like production.</div>
+      <div id="framing" class="status" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <h3>Framing — what this sandbox can and can't verify</h3>
+      <div class="status">
+        Comprehend embeds your page from <b>two</b> origins: the web app (<code>https://app.comprehendpt.com</code>) and the Chrome extension's side panel
+        (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). This sandbox is a web page, so it can only prove your page loads from
+        <code id="ourOrigin"></code>. It <b>cannot</b> impersonate the extension origin — check your headers for that:
+      </div>
+      <pre id="framingCurl" style="margin-top:8px;max-height:none"></pre>
+      <div class="status">Expected: <code>content-security-policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> and no <code>x-frame-options: DENY</code> / <code>SAMEORIGIN</code>.</div>
     </div>
 
     <div class="card">
@@ -115,6 +127,38 @@
     refs: JSON.parse(localStorage.getItem(REFS_KEY) || '{}'),
   };
   const frame = $('frame');
+
+  // ---- handshake watchdog ----------------------------------------------------
+  // If the frame loads but nothing ever arrives from your page, the two usual
+  // causes are: your server refused to be framed by THIS origin (X-Frame-Options
+  // / CSP frame-ancestors — the browser shows an error page we can't read), or
+  // comprehend.js isn't on the page / is pinning a different host origin.
+  const HANDSHAKE_TIMEOUT_MS = 8000;
+  let watchdog = null;
+  const framingEl = document.getElementById('framing');
+  document.getElementById('ourOrigin').textContent = location.origin;
+  function renderCurl() {
+    const url = state.origin ? ($('target').value.trim() || state.origin) : 'https://your-app.example/comprehend';
+    document.getElementById('framingCurl').textContent = `curl -sI "${url}" | grep -iE 'frame-ancestors|x-frame-options'`;
+  }
+  function startWatchdog() {
+    clearTimeout(watchdog); framingEl.style.display = 'none'; state.gotMessage = false;
+    watchdog = setTimeout(() => {
+      if (state.gotMessage) return;
+      framingEl.className = 'status bad'; framingEl.style.display = 'block';
+      framingEl.innerHTML = `Frame loaded but your page never spoke to us in ${HANDSHAKE_TIMEOUT_MS / 1000}s. Most likely one of:<br>` +
+        `1. Your server refuses to be framed by <code>${location.origin}</code> — check <code>X-Frame-Options</code> / <code>frame-ancestors</code> (see the Framing card).<br>` +
+        `2. <code>comprehend.js</code> isn't loaded on that page, or it's pinning a different host (we passed <code>?comprehend_host=${location.origin !== 'https://app.comprehendpt.com' ? location.origin : '(none, production)'}</code>).<br>` +
+        `3. The page threw before subscribing — open its console.`;
+      log('err', 'no handshake from the frame — see the framing hint');
+    }, HANDSHAKE_TIMEOUT_MS);
+  }
+  function markAlive() {
+    if (state.gotMessage) return;
+    state.gotMessage = true; clearTimeout(watchdog);
+    framingEl.className = 'status ok'; framingEl.style.display = 'block';
+    framingEl.textContent = `Your page loads inside ${location.origin} and is talking to us. (The extension origin still needs the header check below.)`;
+  }
 
   // ---- log ---------------------------------------------------------------
   function log(kind, msg) {
@@ -218,6 +262,7 @@
     if (!state.origin || event.source !== frame.contentWindow) return;
     if (event.origin !== state.origin) { log('err', `ignored message from ${event.origin} (pinned to ${state.origin})`); return; }
     const msg = event.data; if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('comprehend:')) return;
+    markAlive();
     switch (msg.type) {
       case 'comprehend:provide': {
         log('in', `provide patientId=${msg.patientId} patientName="${msg.patientName}" patientRef=${msg.patientRef ?? '—'} (${(msg.markdown || '').length} chars)`);
@@ -277,6 +322,7 @@
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.origin)) u.searchParams.set('comprehend_host', location.origin);
     else if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
     frame.src = u.toString();
+    startWatchdog(); renderCurl();
     $('targetStatus').textContent = `Loaded. Accepting messages only from ${state.origin}.`; $('targetStatus').className = 'status ok';
     localStorage.setItem('comprehend_sandbox_target', url);
     renderSubs(); renderBuffer(); renderLink();
@@ -292,8 +338,8 @@
   $('refresh').onclick = () => evaluate('refresh');
   $('clearRefs').onclick = () => { state.refs = {}; localStorage.removeItem(REFS_KEY); renderLink(); log('out', 'links forgotten'); };
 
-  renderPatients(); renderBuffer(); renderSubs(); renderLink();
-  const remembered = localStorage.getItem('comprehend_sandbox_target'); if (remembered) $('target').value = remembered;
+  renderPatients(); renderBuffer(); renderSubs(); renderLink(); renderCurl();
+  const remembered = localStorage.getItem('comprehend_sandbox_target'); if (remembered) { $('target').value = remembered; renderCurl(); }
 })();
 </script>
 </body>

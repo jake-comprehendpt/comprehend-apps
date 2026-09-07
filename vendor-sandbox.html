@@ -39,7 +39,7 @@
 <header>
   <b>Comprehend Apps · Sandbox</b>
   <small>A fake Comprehend around your real app. No account, no PHI, no backend.</small>
-  <a href="../developers/">← Developer guide</a>
+  <a href="./developers.html">← Developer guide</a>
 </header>
 <main>
   <aside>
@@ -284,7 +284,7 @@
   frame.addEventListener('load', () => { if (state.origin) sendReady(); });
 
   $('load').onclick = () => load($('target').value.trim());
-  $('loadExample').onclick = () => { $('target').value = new URL('../vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
+  $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
   $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient(); evaluate('chart_open'); } });
   $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.scenario = b.dataset.s; renderPatients(); });

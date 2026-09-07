@@ -1,10 +1,10 @@
 # Getting listed in the Comprehend partner directory
 
-Listed apps show up as one-click "Register" cards in every clinic's **Admin Settings → Apps**, and on https://app.comprehendpt.com/developers/#directory. Listing is a reviewed pull request against [`developers/partners.json`](developers/partners.json) in this repo.
+Listed apps show up as one-click "Register" cards in every clinic's **Admin Settings → Apps**, and on https://app.comprehendpt.com/developers.html#directory. Listing is a reviewed pull request against [`partners.json`](partners.json) in this repo.
 
 ## Before you open the PR
 
-1. **Build** against the [sandbox](https://app.comprehendpt.com/vendor-sandbox/) until `provide`, linking, and `subscribe` all behave.
+1. **Build** against the [sandbox](https://app.comprehendpt.com/vendor-sandbox.html) until `provide`, linking, and `subscribe` all behave.
 2. **Pilot** with at least one clinic: their admin registers your launch URL directly, confirms their BAA with you, enables it, and you're live for that group. We'll ask who.
 3. Have a **BAA template** ready to sign with clinics, and a public page that tells a clinic admin how to get it (that's your `docs` URL).
 

@@ -2,8 +2,8 @@
 
 Comprehend is the ambient documentation platform physical therapists use to turn the visit into the note. **Apps** let your product run inside Comprehend, next to the note: you tell Comprehend what happened outside the room (home exercise, remote monitoring, force plates, outcomes) and Comprehend tells you what was said inside it.
 
-- **Developer guide:** https://app.comprehendpt.com/developers/
-- **Sandbox (no account needed):** https://app.comprehendpt.com/vendor-sandbox/ — a fake Comprehend around your real app, pointed at `localhost`
+- **Developer guide:** https://app.comprehendpt.com/developers.html
+- **Sandbox (no account needed):** https://app.comprehendpt.com/vendor-sandbox.html — a fake Comprehend around your real app, pointed at `localhost`
 - **Examples:** [`vendor-examples/`](vendor-examples/) — a home-exercise / RTM app and a force-plate app that exercise the whole contract
 - **The script:** `https://app.comprehendpt.com/comprehend.js` — load it from there, don't vendor a copy; it pins the host origin and evolves with the contract
 
@@ -95,7 +95,7 @@ Requirements: your launch URL is `https` and framable by `https://app.comprehend
 The pages here use relative paths, so any static server works:
 
 ```bash
-npx serve .            # then open http://localhost:3000/vendor-sandbox/
+npx serve .            # then open http://localhost:3000/vendor-sandbox.html
 ```
 
 `comprehend.js` pins the Comprehend host origin; when the sandbox runs on `localhost` it tells the script to pin `localhost` instead (`?comprehend_host=`), which is the only origin the script will accept besides production.

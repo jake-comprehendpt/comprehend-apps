@@ -305,16 +305,29 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <div class="cols">
       <div class="card"><h3>1 · Sandbox</h3><p>A fake Comprehend around your real app: two fake patients, canned encounters, mock answers in the shape you asked for, a server-side check that both our origins can frame you, and a log of every message across the frame. Point it at <code>localhost</code>. <a href="./vendor-sandbox.html">Open →</a></p></div>
       <div class="card"><h3>2 · Examples</h3><p>Two small pages that exercise the whole contract: a <a href="./vendor-examples/hep-rtm.html">home-exercise / RTM app</a> (per-patient subscriptions built from each patient's program) and a <a href="./vendor-examples/force-plate.html">force-plate app</a>. View source; copy freely.</p></div>
-      <div class="card"><h3>3 · Go live with a clinic</h3><p>When a clinic wants you, their admin registers your launch URL under <em>Admin Settings → Apps</em>, confirms they hold a BAA with you, and enables it. Every clinician in that group sees you in their Apps tab.</p></div>
+      <div class="card"><h3>3 · Go live with a clinic</h3><p>When a clinic wants you, their admin pastes <em>any link to your app</em> under <em>Admin Settings → Apps</em>. We read your <a href="#manifest">manifest</a>, show them your name, description and BAA contact, check we can embed you, and they confirm the BAA and turn you on. Every clinician in that group sees you in their Apps tab.</p></div>
     </div>
 
+    <h3 id="manifest" style="margin:26px 0 6px">Describe your app once — the manifest</h3>
+    <p class="fine">Host a small JSON file at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code>. It is what a clinic admin sees when they paste your link: no fields to fill in, no origins to type. Every key is optional; without the file we show your hostname as the name and use the pasted link as-is. <code>launchUrl</code> must be on the same origin as the manifest. The sandbox's <em>Check my app</em> shows you exactly what admins will see.</p>
+    <pre><code>{
+  "name": "Your app",
+  "launchUrl": "https://your-app.example/comprehend",
+  "description": "One sentence a clinic admin understands.",
+  "icon": "https://your-app.example/icon-128.png",
+  "docs": "https://your-app.example/comprehend",
+  "baaContact": "privacy@your-app.example",
+  "categories": ["hep", "rtm"]
+}</code></pre>
+
     <h3 style="margin:26px 0 6px">Give clinicians a button</h3>
-    <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens the registration form pre-filled for their admin — or tells a non-admin who to ask.</p>
+    <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens <em>Admin Settings → Apps</em> with your app already looked up for their admin — or tells a non-admin who to ask.</p>
     <pre><code>&lt;a href="https://app.comprehendpt.com/User/apps?add=https%3A%2F%2Fapp.example.com%2Fcomprehend"&gt;Add to Comprehend&lt;/a&gt;</code></pre>
 
     <h3 style="margin:26px 0 6px">Requirements</h3>
     <ul class="fine">
-      <li>Your launch URL must be <code>https</code> and framable by Comprehend — the web app <em>and</em> the Chrome extension's side panel: <code>Content-Security-Policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> (no <code>X-Frame-Options: DENY</code>). The sandbox's <em>Check my headers</em> verifies both from our server.</li>
+      <li>Your launch URL must be <code>https</code> and framable by Comprehend — the web app <em>and</em> the Chrome extension's side panel: <code>Content-Security-Policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> (no <code>X-Frame-Options: DENY</code>). The sandbox's <em>Check my app</em> verifies both from our server.</li>
+      <li>Publish a <a href="#manifest">manifest</a> at <code>/.well-known/comprehend-app.json</code> so admins see your name, description and BAA contact instead of a hostname. Optional, strongly recommended; required for a directory listing.</li>
       <li><strong>Your login must work inside a frame on our origin.</strong> Your session cookie is a third-party cookie there, so <code>SameSite=Lax</code> cookies are not sent and the app appears logged out. Mark the session cookie <code>SameSite=None; Secure; Partitioned</code> (CHIPS), or sign in via a popup (we allow popups). This is the one thing that bites first integrators.</li>
       <li>We append <code>?comprehend=1</code> to the launch URL so you can render an embedded layout.</li>
       <li>Load the script from <code>https://app.comprehendpt.com/comprehend.js</code> — don't vendor a copy; it pins the host origin and evolves with the contract.</li>
@@ -328,7 +341,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
     <div class="cols" style="margin-bottom:22px">
       <div class="card"><h3>1 · Build</h3><p>Load the script, wire <code>setContext</code> and <code>subscribe</code>, prove it in the <a href="./vendor-sandbox.html">sandbox</a>. No one from Comprehend needs to be involved.</p></div>
-      <div class="card"><h3>2 · Pilot</h3><p>One clinic that wants you registers your launch URL directly under Admin Settings → Apps, confirms their BAA with you, and enables it. You're live for that group.</p></div>
+      <div class="card"><h3>2 · Pilot</h3><p>One clinic that wants you pastes your link under Admin Settings → Apps, confirms their BAA with you, and turns you on. You're live for that group.</p></div>
       <div class="card"><h3>3 · Listed</h3><p>Open a PR adding yourself to <code>partners.json</code> in <a href="https://github.com/jake-comprehendpt/comprehend-apps">comprehend-apps</a>. We review the checklist below; merged means every clinic admin sees your card.</p></div>
     </div>
 

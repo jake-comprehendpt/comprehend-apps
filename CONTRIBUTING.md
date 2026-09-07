@@ -5,7 +5,7 @@ Listed apps show up as one-click "Register" cards in every clinic's **Admin Sett
 ## Before you open the PR
 
 1. **Build** against the [sandbox](https://app.comprehendpt.com/vendor-sandbox.html) until `setContext`, linking, and `subscribe` all behave.
-2. **Pilot** with at least one clinic: their admin registers your launch URL directly, confirms their BAA with you, enables it, and you're live for that group. We'll ask who.
+2. **Pilot** with at least one clinic: their admin pastes your link, confirms their BAA with you, turns you on, and you're live for that group. We'll ask who.
 3. Have a **BAA template** ready to sign with clinics, and a public page that tells a clinic admin how to get it (that's your `docs` URL).
 
 ## The review checklist
@@ -14,6 +14,7 @@ We check every item; a PR that fails one gets a comment, not a merge.
 
 - Loads `comprehend.js` from `https://app.comprehendpt.com/comprehend.js` — no vendored copy.
 - Launch URL is `https`, on the declared `embedOrigin`, and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc`, no `X-Frame-Options: DENY`.
+- A manifest is served at `<embedOrigin>/.well-known/comprehend-app.json` with at least `name`, `launchUrl`, `description` and `baaContact`, and the values in your `partners.json` entry match it. (Admins who paste your link see the manifest; the directory card should say the same thing.)
 - Login works inside the frame: session cookie is `SameSite=None; Secure; Partitioned` (CHIPS) or sign-in happens in a popup.
 - Calls `setContext` with your patient's `id` and `name`; opens the linked chart when `yourId` is present; handles `patient` being `null`.
 - Shows the Comprehend patient name next to your open chart so a mismatch is visible to the clinician.

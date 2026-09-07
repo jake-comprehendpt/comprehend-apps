@@ -94,9 +94,23 @@ Only on clinician action: chart open, note generated, *Refresh apps*. Never on a
 
 ## Going live with a clinic
 
-The clinic admin registers your launch URL under *Admin Settings → Apps*, confirms the BAA, and enables it. Give clinicians a button: `https://app.comprehendpt.com/User/apps?add=<your https launch URL>` signs them in and pre-fills the form for their admin.
+The clinic admin pastes *any link to your app* under *Admin Settings → Apps*. Comprehend reads your **manifest**, shows them your name, description and BAA contact, checks that we can embed you, and they confirm the BAA and turn you on. Give clinicians a button: `https://app.comprehendpt.com/User/apps?add=<your https launch URL>` signs them in and does the lookup for their admin.
 
-Requirements: your launch URL is `https` and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc` (the sandbox's *Check my headers* verifies both); we append `?comprehend=1`; handle `patient` being `null` and `yourId` being absent.
+**The manifest** — host it at `https://<your origin>/.well-known/comprehend-app.json`. Every key is optional; without the file admins see your hostname as the name and the pasted link is used as-is. `launchUrl` must be on the same origin as the manifest. The sandbox's *Check my app* shows exactly what admins will see.
+
+```json
+{
+  "name": "Your app",
+  "launchUrl": "https://your-app.example/comprehend",
+  "description": "One sentence a clinic admin understands.",
+  "icon": "https://your-app.example/icon-128.png",
+  "docs": "https://your-app.example/comprehend",
+  "baaContact": "privacy@your-app.example",
+  "categories": ["hep", "rtm"]
+}
+```
+
+Requirements: your launch URL is `https` and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc` (the sandbox's *Check my app* verifies both); we append `?comprehend=1`; handle `patient` being `null` and `yourId` being absent.
 
 **Your login must work inside a frame on our origin.** Your session cookie is a third-party cookie there, so `SameSite=Lax` cookies are not sent and the app appears logged out. Mark the session cookie `SameSite=None; Secure; Partitioned` (CHIPS), or sign in via a popup (we allow popups). This is the one thing that bites first integrators.
 

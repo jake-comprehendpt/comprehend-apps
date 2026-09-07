@@ -57,18 +57,29 @@
     </div>
 
     <div class="card">
-      <h3>Framing — can Comprehend embed you?</h3>
+      <h3>Check my app — framing + manifest</h3>
       <div class="status">
         Comprehend embeds your page from <b>two</b> origins: the web app (<code>https://app.comprehendpt.com</code>) and the Chrome extension's side panel
-        (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). Loading you here proves the first from <code id="ourOrigin"></code>; the button checks both from our server.
+        (<code>chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code>). Loading you here proves the first from <code id="ourOrigin"></code>; the button checks both from our server — and reads your
+        <b>manifest</b> at <code>/.well-known/comprehend-app.json</code>, which is what a clinic admin sees when they paste your link.
       </div>
       <div class="row" style="margin-top:8px">
-        <button class="primary" id="checkHeaders" title="Comprehend's server fetches your URL (HEAD, headers only) and evaluates frame-ancestors / X-Frame-Options for both origins">Check my headers</button>
+        <button class="primary" id="checkHeaders" title="Comprehend's server reads your manifest (≤16 KB JSON) and your launch URL's headers (HEAD only), then evaluates frame-ancestors / X-Frame-Options for both origins">Check my app</button>
       </div>
       <div id="headerResults" style="margin-top:8px"></div>
       <details style="margin-top:8px"><summary class="status">Or check them yourself</summary>
         <pre id="framingCurl" style="margin-top:8px;max-height:none"></pre>
         <div class="status">Expected: <code>content-security-policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> and no <code>x-frame-options: DENY</code> / <code>SAMEORIGIN</code>.</div>
+        <div class="status" style="margin-top:6px">Manifest — host this at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code> (optional; without it admins see your hostname as the name):</div>
+        <pre style="margin-top:4px;max-height:none">{
+  "name": "Your app",
+  "launchUrl": "https://your-app.example/comprehend",
+  "description": "One sentence a clinic admin understands.",
+  "icon": "https://your-app.example/icon-128.png",
+  "docs": "https://your-app.example/comprehend",
+  "baaContact": "privacy@your-app.example",
+  "categories": ["hep", "rtm"]
+}</pre>
       </details>
     </div>
 
@@ -158,7 +169,7 @@
       if (state.gotMessage) return;
       framingEl.className = 'status bad'; framingEl.style.display = 'block';
       framingEl.innerHTML = `Frame loaded but your page never spoke to us in ${HANDSHAKE_TIMEOUT_MS / 1000}s. Most likely one of:<br>` +
-        `1. Your server refuses to be framed by <code>${location.origin}</code> — use <b>Check my headers</b>.<br>` +
+        `1. Your server refuses to be framed by <code>${location.origin}</code> — use <b>Check my app</b>.<br>` +
         `2. <code>comprehend.js</code> isn't loaded on that page, or it's pinning a different host (we passed <code>?comprehend_host=${location.origin !== 'https://app.comprehendpt.com' ? location.origin : '(none, production)'}</code>).<br>` +
         `3. The page threw before subscribing — open its console.`;
       log('err', 'no handshake from the frame — see the framing hint');
@@ -180,18 +191,35 @@
     if (!/^https:\/\//.test(url)) { out.innerHTML = '<div class="status bad">Enter an https URL first — the check runs from our server, so localhost can\'t be reached from there. Use the curl below for localhost.</div>'; return; }
     out.innerHTML = '<div class="status">Checking…</div>';
     try {
-      const rsp = await fetch(`${API_BASE}/v1/vendorApps/checkFraming`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const rsp = await fetch(`${API_BASE}/v1/vendorApps/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
       const body = await rsp.json();
-      if (body.error) { out.innerHTML = `<div class="status bad">${escapeHtml(body.error)}</div>`; log('err', `header check: ${body.error}`); return; }
-      const rows = Object.entries(body.results).map(([origin, r]) =>
-        `<div class="status ${r.allowed ? 'ok' : 'bad'}">${r.allowed ? '✓' : '✗'} <b>${LABELS[origin] || origin}</b> <code>${escapeHtml(origin)}</code> — ${escapeHtml(r.reason)}</div>`).join('');
-      const trim = (k, v) => { if (k !== 'content-security-policy') return v; const m = v.match(/frame-ancestors[^;]*/i); return m ? `${m[0]}${v.length > m[0].length ? '  … (other directives omitted)' : ''}` : `(no frame-ancestors directive; ${v.length} chars omitted)`; };
-      const hdr = (k) => body.headers[k] ? `<code>${escapeHtml(k)}: ${escapeHtml(trim(k, body.headers[k]))}</code>` : `<span class="status">${escapeHtml(k)}: <i>not sent</i></span>`;
-      const allOk = Object.values(body.results).every((r) => r.allowed);
-      out.innerHTML = rows +
-        `<div class="status" style="margin-top:6px">HTTP ${body.status}${body.finalUrl !== body.url ? ` after redirect to <code>${escapeHtml(body.finalUrl)}</code>` : ''}<br>${hdr('content-security-policy')}<br>${hdr('x-frame-options')}</div>` +
-        (allOk ? '' : `<div class="status" style="margin-top:6px">Send: <code>${escapeHtml(body.recommended)}</code></div>`);
-      log(allOk ? 'out' : 'err', `header check: ${Object.values(body.results).filter((r) => r.allowed).length}/${Object.keys(body.results).length} origins allowed`);
+      if (body.error) { out.innerHTML = `<div class="status bad">${escapeHtml(body.error)}</div>`; log('err', `app check: ${body.error}`); return; }
+
+      // 1. manifest — what the clinic admin will see
+      const m = body.manifest;
+      let html = m
+        ? `<div class="status ok">✓ <b>Manifest</b> found at <code>${escapeHtml(body.origin)}/.well-known/comprehend-app.json</code></div>` +
+          `<div class="status" style="margin:4px 0 8px 18px">Admins will see: <b>${escapeHtml(m.name || body.name)}</b>${m.description ? ` — ${escapeHtml(m.description)}` : ' <i>(no description)</i>'}` +
+          `${m.launchUrl ? `<br>launch: <code>${escapeHtml(m.launchUrl)}</code>` : '<br><i>no launchUrl — the link they paste is used as-is</i>'}` +
+          `${m.baaContact ? `<br>BAA: ${escapeHtml(m.baaContact)}` : '<br><i>no baaContact — admins are told to ask you</i>'}` +
+          `${m.icon ? '' : '<br><i>no icon</i>'}</div>`
+        : `<div class="status bad">✗ <b>No manifest</b> (${escapeHtml(body.manifestNote || '')}). Admins will see your app as <b>${escapeHtml(body.name)}</b> with no description — host one at <code>${escapeHtml(body.origin)}/.well-known/comprehend-app.json</code> (template below).</div>`;
+
+      // 2. framing — can both our origins embed the launch URL
+      const f = body.framing || {};
+      if (f.error) {
+        html += `<div class="status bad">✗ ${escapeHtml(f.error)}</div>`;
+      } else {
+        html += Object.entries(f.results).map(([origin, r]) =>
+          `<div class="status ${r.allowed ? 'ok' : 'bad'}">${r.allowed ? '✓' : '✗'} <b>${LABELS[origin] || origin}</b> <code>${escapeHtml(origin)}</code> — ${escapeHtml(r.reason)}</div>`).join('');
+        const trim = (k, v) => { if (k !== 'content-security-policy') return v; const mm = v.match(/frame-ancestors[^;]*/i); return mm ? `${mm[0]}${v.length > mm[0].length ? '  … (other directives omitted)' : ''}` : `(no frame-ancestors directive; ${v.length} chars omitted)`; };
+        const hdr = (k) => f.headers[k] ? `<code>${escapeHtml(k)}: ${escapeHtml(trim(k, f.headers[k]))}</code>` : `<span class="status">${escapeHtml(k)}: <i>not sent</i></span>`;
+        const allOk = Object.values(f.results).every((r) => r.allowed);
+        html += `<div class="status" style="margin-top:6px">HTTP ${f.status} for <code>${escapeHtml(f.finalUrl)}</code><br>${hdr('content-security-policy')}<br>${hdr('x-frame-options')}</div>` +
+          (allOk ? '' : `<div class="status" style="margin-top:6px">Send: <code>${escapeHtml(f.recommended)}</code></div>`);
+        log(allOk ? 'out' : 'err', `app check: ${m ? 'manifest ok' : 'no manifest'}; ${Object.values(f.results).filter((r) => r.allowed).length}/${Object.keys(f.results).length} origins allowed`);
+      }
+      out.innerHTML = html;
     } catch (e) { out.innerHTML = `<div class="status bad">Check failed: ${escapeHtml(e.message)}</div>`; }
   }
   $('checkHeaders').onclick = checkHeaders;

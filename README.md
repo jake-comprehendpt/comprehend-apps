@@ -98,6 +98,8 @@ The clinic admin registers your launch URL under *Admin Settings → Apps*, conf
 
 Requirements: your launch URL is `https` and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc` (the sandbox's *Check my headers* verifies both); we append `?comprehend=1`; handle `patient` being `null` and `yourId` being absent.
 
+**Your login must work inside a frame on our origin.** Your session cookie is a third-party cookie there, so `SameSite=Lax` cookies are not sent and the app appears logged out. Mark the session cookie `SameSite=None; Secure; Partitioned` (CHIPS), or sign in via a popup (we allow popups). This is the one thing that bites first integrators.
+
 ## Running the sandbox and examples locally
 
 The pages here use relative paths, so any static server works:

@@ -14,6 +14,7 @@ We check every item; a PR that fails one gets a comment, not a merge.
 
 - Loads `comprehend.js` from `https://app.comprehendpt.com/comprehend.js` — no vendored copy.
 - Launch URL is `https`, on the declared `embedOrigin`, and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc`, no `X-Frame-Options: DENY`.
+- Login works inside the frame: session cookie is `SameSite=None; Secure; Partitioned` (CHIPS) or sign-in happens in a popup.
 - Calls `setContext` with your patient's `id` and `name`; opens the linked chart when `yourId` is present; handles `patient` being `null`.
 - Shows the Comprehend patient name next to your open chart so a mismatch is visible to the clinician.
 - Builds subscriptions from the patient's own data and re-declares them on each `patient` event (tearing down the previous one); each structure ≤ 200 leaves.

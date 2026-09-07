@@ -180,54 +180,45 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <p class="lead">Your existing app opens inside Comprehend as a panel next to the clinician's note — in the web app and in the Chrome side panel inside the EMR. Same UI, same login. A hosted script gives it a <code>comprehend</code> object with three things: <b>events</b> we send you, <b>content</b> you give us (that's what reaches the chart), and <b>questions</b> you ask (that's what comes back from the room).</p>
 
     <figure class="wire" style="margin:0 0 26px" aria-label="Data lifecycle: into the chart, and back from the room">
-    <svg viewBox="0 0 960 400" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui">
+    <svg viewBox="0 0 960 440" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui">
       <defs>
-        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/></marker>
-        <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+        <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/></marker>
+        <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
       </defs>
-      <!-- Comprehend: the ambient field around the visit, not a box -->
-      <ellipse cx="480" cy="212" rx="452" ry="178" fill="#ecfdf5" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="6 6" opacity=".9"/>
-      <text x="480" y="72" font-size="12.5" font-weight="700" fill="#0f766e" text-anchor="middle" letter-spacing=".06em">COMPREHEND · THE AMBIENT LAYER AROUND THE VISIT</text>
-      <text x="480" y="89" font-size="11" fill="#115e59" text-anchor="middle">listening to the room · writing the note · already inside the EMR</text>
+      <!-- Comprehend: the field around the visit -->
+      <ellipse cx="480" cy="228" rx="452" ry="192" fill="#f0fdf9" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="7 7"/>
+      <text x="480" y="74" font-size="12" font-weight="700" fill="#0f766e" text-anchor="middle" letter-spacing=".12em">COMPREHEND — THE AMBIENT LAYER AROUND THE VISIT</text>
 
-      <!-- center: the room -->
-      <circle cx="480" cy="215" r="72" fill="#fff" stroke="#0f766e" stroke-width="2"/>
-      <!-- provider + patient glyphs -->
-      <circle cx="462" cy="190" r="9" fill="#0f766e"/><path d="M446 226 a16 16 0 0 1 32 0 z" fill="#0f766e"/>
-      <circle cx="500" cy="194" r="8" fill="#94a3b8"/><path d="M486 226 a14 14 0 0 1 28 0 z" fill="#94a3b8"/>
-      <text x="480" y="248" font-size="13" font-weight="700" fill="#0f172a" text-anchor="middle">The room</text>
-      <text x="480" y="264" font-size="10.5" fill="#475569" text-anchor="middle">the provider and their patient</text>
+      <!-- your app -->
+      <rect x="60" y="190" width="180" height="90" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+      <text x="150" y="230" font-size="15" font-weight="700" fill="#9a3412" text-anchor="middle">Your app</text>
+      <text x="150" y="252" font-size="11" fill="#9a3412" text-anchor="middle">in the side panel</text>
 
-      <!-- left: your app -->
-      <rect x="70" y="170" width="190" height="90" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
-      <text x="165" y="205" font-size="14" font-weight="700" fill="#9a3412" text-anchor="middle">Your app</text>
-      <text x="165" y="224" font-size="10.5" fill="#9a3412" text-anchor="middle">as it is — in the side panel,</text>
-      <text x="165" y="239" font-size="10.5" fill="#9a3412" text-anchor="middle">next to the provider</text>
+      <!-- the EMR -->
+      <rect x="720" y="190" width="180" height="90" rx="12" fill="#fff" stroke="#334155" stroke-width="1.5"/>
+      <text x="810" y="230" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">The EMR</text>
+      <text x="810" y="252" font-size="11" fill="#475569" text-anchor="middle">where the note lands</text>
 
-      <!-- right: the EMR -->
-      <rect x="700" y="170" width="190" height="90" rx="10" fill="#fff" stroke="#334155" stroke-width="1.5"/>
-      <text x="795" y="205" font-size="14" font-weight="700" fill="#0f172a" text-anchor="middle">The EMR</text>
-      <text x="795" y="224" font-size="10.5" fill="#475569" text-anchor="middle">where the note lands</text>
-      <text x="795" y="239" font-size="10.5" fill="#64748b" text-anchor="middle">WebPT · Raintree · 25+</text>
+      <!-- the room -->
+      <circle cx="480" cy="235" r="78" fill="#fff" stroke="#0f766e" stroke-width="2"/>
+      <circle cx="462" cy="203" r="10" fill="#0f766e"/><path d="M444 242 a18 18 0 0 1 36 0 z" fill="#0f766e"/>
+      <circle cx="501" cy="207" r="8.5" fill="#94a3b8"/><path d="M486 242 a15 15 0 0 1 30 0 z" fill="#94a3b8"/>
+      <text x="480" y="268" font-size="14" font-weight="700" fill="#0f172a" text-anchor="middle">The room</text>
+      <text x="480" y="286" font-size="10.5" fill="#475569" text-anchor="middle">provider &amp; patient</text>
 
-      <!-- your data → the EMR note (arcing over the room, through the field) -->
-      <path d="M 260 178 C 360 100, 600 100, 700 178" fill="none" stroke="#ea580c" stroke-width="2" marker-end="url(#arrO)"/>
-      <text x="480" y="118" font-size="11" fill="#9a3412" text-anchor="middle" font-weight="700">what you know about the patient → the note → the EMR</text>
-      <text x="480" y="133" font-size="10" fill="#9a3412" text-anchor="middle" font-family="ui-monospace,monospace">patient.setContext(markdown)</text>
+      <!-- your data → the EMR note (arc over the room) -->
+      <path d="M 240 196 C 330 104, 630 104, 720 196" fill="none" stroke="#ea580c" stroke-width="2.25" marker-end="url(#arrO)"/>
+      <text x="480" y="112" font-size="12.5" font-weight="700" fill="#9a3412" text-anchor="middle">your data → the EMR note</text>
 
       <!-- the room → your app -->
-      <path d="M 408 232 C 360 262, 320 262, 262 240" fill="none" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
-      <text x="335" y="290" font-size="11" fill="#0f766e" text-anchor="middle" font-weight="700">what happened in the room, per patient</text>
-      <text x="335" y="305" font-size="10" fill="#115e59" text-anchor="middle" font-family="ui-monospace,monospace">subscribe(structure) → answers</text>
+      <path d="M 410 274 C 365 328, 300 328, 242 270" fill="none" stroke="#0f766e" stroke-width="2.25" marker-end="url(#arrG)"/>
+      <text x="326" y="352" font-size="12.5" font-weight="700" fill="#0f766e" text-anchor="middle">what happened in the room</text>
 
-      <!-- the room → the EMR (the note itself) -->
-      <path d="M 552 232 C 600 262, 640 262, 698 240" fill="none" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
-      <text x="625" y="290" font-size="11" fill="#0f766e" text-anchor="middle" font-weight="700">the note, written from the visit</text>
-      <text x="625" y="305" font-size="10" fill="#115e59" text-anchor="middle">on the clinician's action — never on a timer</text>
-
-      <text x="480" y="362" font-size="10.5" fill="#475569" text-anchor="middle">Your app never talks to the EMR. It talks to the provider's visit, and the EMR gets the note.</text>
+      <!-- the room → the EMR -->
+      <path d="M 550 274 C 595 328, 660 328, 718 270" fill="none" stroke="#0f766e" stroke-width="2.25" marker-end="url(#arrG)"/>
+      <text x="634" y="352" font-size="12.5" font-weight="700" fill="#0f766e" text-anchor="middle">the note, from the visit</text>
     </svg>
-    <figcaption class="fine">The provider and the EMR are the workflow. Comprehend is the layer around it — and your app joins that workflow through Comprehend: what you know reaches the EMR note; what happens in the room reaches you.</figcaption>
+    <figcaption class="fine">Your app never talks to the EMR. It talks to the provider's visit through Comprehend — and the EMR gets the note. Data in with <code>setContext</code>; the room back with <code>subscribe</code>.</figcaption>
     </figure>
     <div class="step"><div class="num">1</div><div>
       <h3 style="margin:4px 0">Load the script</h3>

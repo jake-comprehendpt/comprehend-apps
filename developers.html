@@ -108,13 +108,9 @@
       <g font-size="8.5" fill="#64748b"><text x="388" y="114">Transcript</text><text x="432" y="114">Note</text><text x="456" y="114">Chat</text><text x="480" y="114" fill="#0f766e" font-weight="700">Apps</text></g>
       <rect x="478" y="118" width="24" height="2.5" fill="#0f766e"/>
       <line x1="386" y1="121" x2="622" y2="121" stroke="#e2e8f0"/>
-      <!-- app pills -->
-      <rect x="386" y="130" width="50" height="15" rx="7.5" fill="#fff" stroke="#2563eb"/><text x="411" y="140.5" font-size="7.5" fill="#2563eb" text-anchor="middle">RTM app</text>
-      <rect x="441" y="130" width="50" height="15" rx="7.5" fill="#ea580c"/><text x="466" y="140.5" font-size="7.5" fill="#fff" text-anchor="middle" font-weight="700">HEP app</text>
-      <rect x="496" y="130" width="44" height="15" rx="7.5" fill="#fff" stroke="#7c3aed"/><text x="518" y="140.5" font-size="7.5" fill="#7c3aed" text-anchor="middle">Sensor</text>
-      <text x="622" y="140.5" font-size="7.5" fill="#0f766e" text-anchor="end">Refresh</text>
       <!-- the vendor's UI, framed -->
-      <rect x="386" y="153" width="236" height="250" rx="7" fill="#fff" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <g transform="translate(0,-23)">
+      <rect x="386" y="153" width="236" height="273" rx="7" fill="#fff" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="5 4"/>
       <rect x="387" y="154" width="234" height="22" rx="7" fill="#ea580c"/><rect x="387" y="168" width="234" height="8" fill="#ea580c"/>
       <rect x="396" y="161" width="70" height="7" rx="3.5" fill="#fff" opacity=".9"/><rect x="566" y="160" width="48" height="9" rx="4.5" fill="#fff" opacity=".35"/>
       <text x="504" y="192" font-size="9" fill="#9a3412" font-weight="700" text-anchor="middle">← your app, as it is</text>
@@ -126,9 +122,10 @@
       <text x="396" y="296" font-size="8.5" fill="#0f172a" font-weight="700">Adherence · last 7 days</text>
       <g fill="#fdba74"><rect x="396" y="334" width="18" height="24"/><rect x="420" y="322" width="18" height="36"/><rect x="444" y="342" width="18" height="16"/><rect x="468" y="310" width="18" height="48" fill="#ea580c"/><rect x="492" y="328" width="18" height="30"/><rect x="516" y="316" width="18" height="42"/><rect x="540" y="352" width="18" height="6"/></g>
       <line x1="396" y1="358" x2="612" y2="358" stroke="#cbd5e1"/>
-      <rect x="396" y="368" width="216" height="28" rx="5" fill="#fff7ed"/>
-      <text x="402" y="380" font-size="7.5" fill="#9a3412" font-weight="700">From today's visit</text>
-      <rect x="402" y="386" width="150" height="5" rx="2.5" fill="#fdba74"/>
+      <rect x="396" y="391" width="216" height="28" rx="5" fill="#fff7ed"/>
+      <text x="402" y="403" font-size="7.5" fill="#9a3412" font-weight="700">From today's visit</text>
+      <rect x="402" y="409" width="150" height="5" rx="2.5" fill="#fdba74"/>
+      </g>
     </svg>
     <div class="wire-trio">
       <svg viewBox="0 0 180 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RTM app wireframe">
@@ -230,10 +227,9 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
       <h3 style="margin:4px 0">Listen for the patient</h3>
       <p class="fine">One event, one handler. We hand you a <em>patient handle</em> — who Comprehend has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note or pressed <em>Refresh apps</em> — send your latest). Same code path every time.</p>
       <pre><code>comprehend.on(<span class="s">'patient'</span>, (patient, { reason }) =&gt; {
-  <span class="k">if</span> (!patient) <span class="k">return</span>;                                         <span class="c">// no chart open</span>
-  <span class="k">const</span> mine = patient.yourId ? byId(patient.yourId) : findByName(patient.name);   <span class="c">// yourId = the id you gave us last time</span>
-  <span class="k">if</span> (!mine) <span class="k">return</span>;                                            <span class="c">// clinician hasn't opened them in your app yet</span>
-  share(patient, mine);                                          <span class="c">// steps 3 and 4</span>
+  <span class="k">if</span> (!patient) <span class="k">return</span>;                                  <span class="c">// no chart open</span>
+  <span class="k">const</span> mine = byId(patient.yourId) || byName(patient.name);
+  <span class="k">if</span> (mine) share(patient, mine);                         <span class="c">// steps 3 and 4</span>
 });</code></pre>
     </div></div>
 
@@ -248,21 +244,13 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
     <div class="step"><div class="num">4</div><div>
       <h3 style="margin:4px 0">Subscribe — ask the visit, about <em>this</em> patient</h3>
-      <p class="fine">Declare what you want to know, in the shape you want it back. Build it from the patient's own program — one boolean per prescribed exercise, an enum of the exercises you actually assigned — and re-declare it whenever the patient changes. Comprehend answers from the live encounter when the clinician acts and pushes the result to you.</p>
-      <pre><code><span class="k">let</span> unsubscribe = <span class="k">null</span>;
-<span class="k">function</span> share(patient, mine) {
-  <span class="k">if</span> (unsubscribe) unsubscribe();                              <span class="c">// questions are per patient</span>
-  <span class="k">const</span> performed = Object.fromEntries(mine.program.map((ex) =&gt;
-    [ex, <span class="s">`boolean — was "${ex}" performed or reviewed in today's visit?`</span>]));
-  unsubscribe = comprehend.subscribe({
-    performed,                                                   <span class="c">// { "Sit-to-stand": true, "Hip hinge": false, ... }</span>
-    changes: [{ exercise: { _choices: mine.program },
-                change:   { _choices: [<span class="s">'progressed'</span>, <span class="s">'regressed'</span>, <span class="s">'removed'</span>, <span class="s">'kept'</span>] },
-                dosage:   <span class="s">'string — sets x reps or time, if stated'</span> }],
-    adherence_report: <span class="s">'string — what the patient said about doing the home program'</span>,
-    pain_today:       <span class="s">'number — 0-10 as reported, or null'</span>,
-  }, (answers, forPatient, meta) =&gt; render(forPatient.id, answers, meta.version));
-}</code></pre>
+      <p class="fine">Two arguments: the <em>structure</em> you want back, and a <em>callback</em> that receives it filled in. Keys are your names; values say the type and, in plain words, the question. Build the structure from the patient's own program — one boolean per prescribed exercise — and subscribe again when the patient changes. Comprehend answers from the live encounter when the clinician acts and pushes the result to you.</p>
+      <pre><code><span class="k">const</span> unsubscribe = comprehend.subscribe({
+  performed:  { <span class="s">'Sit-to-stand'</span>: <span class="s">'boolean'</span>, <span class="s">'Hip hinge'</span>: <span class="s">'boolean'</span> },
+  pain_today: <span class="s">'number — 0-10 as reported, or null'</span>,
+  adherence:  <span class="s">'string — what the patient said about the home program'</span>,
+}, (answers) =&gt; render(answers));
+<span class="c">// answers → { performed: { 'Sit-to-stand': true, 'Hip hinge': false }, pain_today: 3, adherence: '…' }</span></code></pre>
     </div></div>
 
     <div class="cols" style="margin-top:8px">

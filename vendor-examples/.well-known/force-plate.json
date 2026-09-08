@@ -1,0 +1,9 @@
+{
+  "name": "Example Force Plate",
+  "launchUrl": "https://app.comprehendpt.com/vendor-examples/force-plate.html",
+  "description": "Jump and hop testing. Pushes the latest test into the note and asks which results the PT discussed.",
+  "icon": "https://app.comprehendpt.com/vendor-examples/.well-known/force-plate-icon.svg",
+  "docs": "https://app.comprehendpt.com/developers.html",
+  "baaContact": "partners@comprehendpt.ai",
+  "categories": ["sensor", "outcomes"]
+}

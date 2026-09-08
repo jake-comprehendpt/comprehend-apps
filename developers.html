@@ -309,7 +309,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     </div>
 
     <h3 id="manifest" style="margin:26px 0 6px">Describe your app once — the manifest</h3>
-    <p class="fine">Host a small JSON file at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code>. It is what a clinic admin sees when they paste your link: no fields to fill in, no origins to type. Every key is optional; without the file we show your hostname as the name and use the pasted link as-is. <code>launchUrl</code> must be on the same origin as the manifest. The sandbox's <em>Check my app</em> shows you exactly what admins will see.</p>
+    <p class="fine">Host a small JSON file at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code>. It is what a clinic admin sees when they paste your link: no fields to fill in, no origins to type. Every key is optional; without the file we show your hostname as the name and use the pasted link as-is. <code>launchUrl</code> must be on the same origin as the manifest. The sandbox's <em>Check my app</em> shows you exactly what admins will see. Filled-in examples: <a href="./vendor-examples/.well-known/hep-rtm.json">hep-rtm.json</a>, <a href="./vendor-examples/.well-known/force-plate.json">force-plate.json</a> (<a href="https://github.com/jake-comprehendpt/comprehend-apps/tree/main/vendor-examples/.well-known">why they aren't at the root</a>).</p>
     <pre><code>{
   "name": "Your app",
   "launchUrl": "https://your-app.example/comprehend",

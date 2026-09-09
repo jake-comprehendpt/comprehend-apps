@@ -1,10 +1,10 @@
 {
   "name": "Forceline",
-  "launchUrl": "https://app.comprehendpt.com/vendor-examples/force-plate.html",
+  "launchUrl": "../force-plate.html",
   "description": "Force plate testing for return to sport. Pushes the latest test into the note and asks which results the PT discussed.",
-  "icon": "https://app.comprehendpt.com/vendor-examples/.well-known/force-plate-icon.svg",
+  "icon": "./force-plate-icon.svg",
   "color": "#6366f1",
-  "docs": "https://app.comprehendpt.com/developers.html",
+  "docs": "/developers.html",
   "baaContact": "partners@comprehendpt.ai",
   "categories": [
     "sensor",

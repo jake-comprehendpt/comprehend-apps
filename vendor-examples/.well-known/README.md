@@ -24,9 +24,9 @@ has to live on your origin.) Rules the resolver enforces:
 | key | rule |
 |---|---|
 | `name` | up to 80 characters; what admins see as the app's name |
-| `launchUrl` | `https`, **same origin as the manifest**; the page we open in the Apps tab |
+| `launchUrl` | the page we open in the Apps tab; **same origin as the manifest**. Absolute `https`, or relative to the manifest (`../app.html`) |
 | `description` | up to 200 characters, one sentence a clinic admin understands |
-| `icon` | `https` URL, square, 64px or larger |
+| `icon` | square, 64px or larger; `https` or relative to the manifest |
 | `color` | brand colour as `#rrggbb`; used for the app's pill and accents inside Comprehend |
 | `docs` | `https` URL of your Comprehend integration page |
 | `baaContact` | e-mail or URL where a clinic gets your Business Associate Agreement |

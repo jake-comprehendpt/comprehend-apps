@@ -1,10 +1,10 @@
 {
   "name": "Cadence",
-  "launchUrl": "https://app.comprehendpt.com/vendor-examples/hep-rtm.html",
+  "launchUrl": "../hep-rtm.html",
   "description": "Home exercise programs and remote therapeutic monitoring. Asks, per patient, whether each prescribed exercise was performed today.",
-  "icon": "https://app.comprehendpt.com/vendor-examples/.well-known/hep-rtm-icon.svg",
+  "icon": "./hep-rtm-icon.svg",
   "color": "#0f766e",
-  "docs": "https://app.comprehendpt.com/developers.html",
+  "docs": "/developers.html",
   "baaContact": "partners@comprehendpt.ai",
   "categories": [
     "hep",

@@ -111,7 +111,7 @@ Only on clinician action: chart open, note generated, *Refresh apps*. Never on a
 ## Trust model
 
 - **Clinician-initiated, always.** Answers are computed inside the clinician's session on their action.
-- **Identity is the origin.** A clinic admin registers your exact origin; we accept messages only from it, from the frame we created. No tokens.
+- **Identity is the origin, plus the frame.** A clinic admin registers your exact origin; we accept messages only from it, and only from the frame we created for you. No tokens. Several apps may share an origin if their launch URLs differ.
 - **Linking is a human act.** The clinician opens the same patient in both places; your first `setContext` is the link, and we check the names resemble each other. If they don't, you get `CONTEXT_REJECTED` and the clinician is told which two names disagreed.
 - **BAA first.** A clinic admin cannot enable your app until they confirm their organization holds a signed BAA with you — and they're told exactly what they're sharing. Have yours ready.
 

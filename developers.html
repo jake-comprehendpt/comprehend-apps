@@ -321,7 +321,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <h2>Trust model</h2>
     <div class="cols">
       <div class="card"><h3>Clinician-initiated, always</h3><p>Answers are computed inside the clinician's session, on their action. Never on a timer, never from your servers. Closing the tab ends access.</p></div>
-      <div class="card"><h3>Identity is the origin</h3><p>A clinic admin registers your app's exact origin. We accept messages only from that origin, from the frame we created. No tokens for you to manage.</p></div>
+      <div class="card"><h3>Identity is the origin, plus the frame</h3><p>A clinic admin registers your app's exact origin. We accept messages only from that origin, and only from the frame we created for you. No tokens to manage. Several apps may share an origin if their launch URLs differ.</p></div>
       <div class="card"><h3>Linking is a human act</h3><p>Nobody fuzzy-matches names. The clinician opens the same patient in both places; your first <code>setContext</code> is the link, and we check the names resemble each other before we accept it. If they don't, you get <code>CONTEXT_REJECTED</code> and the clinician gets told which two names disagreed.</p></div>
       <div class="card"><h3>BAA before anything loads</h3><p>A clinic admin cannot enable your app until they confirm their organization holds a signed BAA with you — and they're told exactly what they're sharing. Your page never loads, and never receives a patient name, before that. Have your BAA ready.</p></div>
     </div>

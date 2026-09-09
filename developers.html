@@ -262,21 +262,34 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
       <span class="s">'Sit-to-stand'</span>: { _type: <span class="s">'boolean'</span> },        <span class="c">// yes / no</span>
       <span class="s">'Hip hinge'</span>:    { _type: <span class="s">'boolean'</span> },
     },
-    pain_today: { _type: <span class="s">'integer'</span>, _description: <span class="s">'0-10 as the patient reported it, or null'</span> },
-    symptoms:   { _choices: [<span class="s">'pain'</span>, <span class="s">'stiffness'</span>, <span class="s">'swelling'</span>, <span class="s">'giving way'</span>], _multiple: <span class="k">true</span> },   <span class="c">// pick any</span>
-    plan:       { _choices: [<span class="s">'progress'</span>, <span class="s">'hold'</span>, <span class="s">'regress'</span>, <span class="s">'discharge'</span>] },                    <span class="c">// pick one</span>
+    pain_today: {
+      _type: <span class="s">'integer'</span>,
+      _description: <span class="s">'0-10 as the patient reported it, or null'</span>,
+    },
+    symptoms: {                                  <span class="c">// pick any</span>
+      _choices: [<span class="s">'pain'</span>, <span class="s">'stiffness'</span>, <span class="s">'swelling'</span>, <span class="s">'giving way'</span>],
+      _multiple: <span class="k">true</span>,
+    },
+    plan: {                                      <span class="c">// pick one</span>
+      _choices: [<span class="s">'progress'</span>, <span class="s">'hold'</span>, <span class="s">'regress'</span>, <span class="s">'discharge'</span>],
+    },
     changes: [{                                  <span class="c">// a list — one row per change the PT stated</span>
-      exercise: { _choices: mine.program },      <span class="c">// from YOUR data — this is where answers get sharp</span>
-      dosage:   <span class="s">'sets x reps or time, if stated'</span>,   <span class="c">// a plain string is a free-text answer</span>
+      exercise: { _choices: mine.program },      <span class="c">// from YOUR data — where answers get sharp</span>
+      dosage:   <span class="s">'sets x reps or time, if stated'</span>,   <span class="c">// a plain string: free-text answer</span>
     }],
     patient_said: <span class="s">'what the patient said about doing the home program'</span>,
   }, (answers) =&gt; render(answers));
 }
-<span class="c">// answers → { performed: { 'Sit-to-stand': true, 'Hip hinge': false }, pain_today: 3,</span>
-<span class="c">//             symptoms: ['pain'], plan: 'progress', changes: [{ exercise: 'Hip hinge', dosage: '2x10' }], patient_said: '…' }</span></code></pre>
+<span class="c">// answers → {</span>
+<span class="c">//   performed: { 'Sit-to-stand': true, 'Hip hinge': false },</span>
+<span class="c">//   pain_today: 3, symptoms: ['pain'], plan: 'progress',</span>
+<span class="c">//   changes: [{ exercise: 'Hip hinge', dosage: '2x10' }],</span>
+<span class="c">//   patient_said: '…',</span>
+<span class="c">// }</span></code></pre>
       <p class="fine" style="margin-top:12px">Nothing specific to ask yet? Ask for nothing. An empty structure — <code>{}</code>, <code>''</code> or <code>null</code> — gives you one plain-text summary of the visit as it relates to your app, given the context you set. A string, not an object; empty when nothing relevant was said.</p>
       <pre><code>comprehend.subscribe({}, (summary) =&gt; show(summary));
-<span class="c">// summary → "Patient reported doing the program most days but skipped hip hinge because of knee pain; PT regressed it and progressed sit-to-stand to 3x12."</span></code></pre>
+<span class="c">// summary → "Patient reported doing the program most days but skipped hip hinge</span>
+<span class="c">//             because of knee pain; PT regressed it and progressed sit-to-stand to 3x12."</span></code></pre>
     </div></div>
 
     <div class="cols" style="margin-top:8px">
@@ -337,7 +350,10 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
     <h3 style="margin:26px 0 6px">Give clinicians a button</h3>
     <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens <em>Admin Settings → Apps</em> with your app already looked up for their admin — or tells a non-admin who to ask. If your manifest isn't at <code>/.well-known/</code>, add <code>&amp;manifest=&lt;its URL&gt;</code> (same origin as the app).</p>
-    <pre><code>&lt;a href="https://app.comprehendpt.com/User/apps?add=https%3A%2F%2Fapp.example.com%2Fcomprehend"&gt;Add to Comprehend&lt;/a&gt;</code></pre>
+    <pre><code>&lt;a href="https://app.comprehendpt.com/User/apps
+         ?add=https%3A%2F%2Fapp.example.com%2Fcomprehend"&gt;
+  Add to Comprehend
+&lt;/a&gt;</code></pre>
 
     <h3 style="margin:26px 0 6px">Try it with the demo apps</h3>
     <p class="fine">These are that button, wired to the two example apps. Click one while signed in to Comprehend as a clinic admin: you'll land on <em>Admin Settings → Apps</em> with the card already filled from the demo's manifest. Turn it on and it shows up in your Apps tab on the next visit you open. Both demos are fictional and use canned data — nothing leaves your browser except the visit answers Comprehend computes for them.</p>

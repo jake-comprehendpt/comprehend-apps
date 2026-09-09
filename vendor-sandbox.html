@@ -87,13 +87,15 @@
     <div class="card">
       <h3>Fake chart — what Comprehend has open</h3>
       <div class="row" id="patients"></div>
-      <label>Canned encounter (drives mock answers)</label>
+      <label>Canned encounter — what was said in the room (drives mock answers)</label>
       <div class="row" id="scenarios"></div>
+      <div class="status" id="staleHint" style="display:none"></div>
       <div class="row" style="margin-top:10px">
-        <button id="bump" title="Simulates new transcript content: version +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
-        <button id="refresh" title="What the clinician's 'Refresh apps' / note generation does: patient(refresh) to your app, then subscriptions are answered">Refresh apps</button>
+        <button class="primary" id="comprehend" title="What the clinician's 'Comprehend' (generate note) button does: patient(refresh) to your app, then every subscription is answered against the current encounter">Comprehend</button>
+        <button id="refresh" title="The clinician's 'Refresh apps': same thing, without generating a note">Refresh apps</button>
+        <button id="bump" title="Simulates more transcript arriving without changing the canned encounter: version +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
       </div>
-      <div class="status">Production answers subscriptions on clinician action only — chart open, note generate, Refresh apps. Same here.</div>
+      <div class="status">Nothing is answered until the clinician acts — chart open, <b>Comprehend</b> (note), or Refresh apps. Changing the encounter makes the current answers stale; it does not push new ones. Same as production.</div>
     </div>
 
     <div class="card">
@@ -368,7 +370,9 @@
   }
   function renderSubs() {
     $('subCount').textContent = state.subs.size;
-    $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${Object.keys(s.types).length} leaves ${s.lastAnswers ? '<span class="pill ok">answered</span>' : '<span class="pill">pending</span>'}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
+    const keyNow = (s) => state.patient ? `${s.hash}|${state.contextVersion}|${state.patient.id}` : null;
+    const pill = (s) => !s.lastAnswers ? '<span class="pill">pending</span>' : s.lastKey === keyNow(s) ? '<span class="pill ok">answered</span>' : '<span class="pill" style="background:#fef3c7;color:#92400e">stale — press Comprehend</span>';
+    $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${Object.keys(s.types).length} leaves ${pill(s)}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
   }
   function renderLink() {
     const el = $('linkStatus'); el.className = 'status'; $('clinicianToast').innerHTML = '';
@@ -402,9 +406,18 @@
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
   $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); evaluate('chart_open'); } });
-  $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.scenario = b.dataset.s; renderPatients(); });
-  $('bump').onclick = () => { state.contextVersion += 1; renderPatients(); log('out', `version → ${state.contextVersion} (cache invalidated; nothing pushed until an action)`); };
-  $('refresh').onclick = () => { if (!state.ready) return; sendPatient('refresh'); evaluate('refresh'); };
+  function markStale(why) {
+    state.contextVersion += 1; renderPatients(); renderSubs();
+    const anyAnswered = Array.from(state.subs.values()).some((s) => s.lastAnswers);
+    const h = $('staleHint'); h.style.display = 'block'; h.className = 'status';
+    h.innerHTML = anyAnswered ? `${why} — the answers your app is showing are now <b>stale</b>. Nothing is pushed until the clinician acts: press <b>Comprehend</b>.` : `${why}. Press <b>Comprehend</b> to answer your subscriptions against it.`;
+    log('out', `version → ${state.contextVersion} (${why.toLowerCase()}; cached answers invalidated, nothing pushed until an action)`);
+  }
+  $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (state.scenario === b.dataset.s) return; state.scenario = b.dataset.s; markStale('Encounter changed'); });
+  $('bump').onclick = () => markStale('New transcript content');
+  const act = (reason) => { if (!state.ready) return; $('staleHint').style.display = 'none'; sendPatient('refresh'); evaluate(reason); renderSubs(); };
+  $('comprehend').onclick = () => act('note');
+  $('refresh').onclick = () => act('refresh');
   $('clearRefs').onclick = () => { state.refs = {}; localStorage.removeItem(REFS_KEY); renderLink(); log('out', 'links forgotten'); };
 
   renderPatients(); renderBuffer(); renderSubs(); renderLink(); renderCurl();

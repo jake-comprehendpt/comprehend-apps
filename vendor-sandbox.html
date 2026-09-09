@@ -136,6 +136,7 @@
   const PATIENTS = [
     { id: 'sbx-p1', name: 'Ann Kim', dob: '1980-04-02' },
     { id: 'sbx-p2', name: 'Bob Smith', dob: '1972-11-19' },
+    { id: 'sbx-p3', name: 'Maria Lopez', dob: '1985-05-19' },   // in neither example's roster → exercises the 'create this patient' path
   ];
   const SCENARIOS = [['rtm', 'RTM discussed'], ['hep', 'HEP changed'], ['none', 'Nothing relevant']];
   const MAX_SUBS = 10, MAX_BUFFER = 8 * 1024;
@@ -269,6 +270,7 @@
     })(structure, '');
     return types;
   }
+  const mockSummary = (scenario) => scenario === 'none' ? '' : scenario === 'rtm' ? 'Reviewed remote monitoring data with the patient; adherence discussed and program continued unchanged.' : 'Patient reported doing the program most days but skipped hip hinge because of knee pain; PT regressed it and progressed sit-to-stand to 3x12.';
   function mockAnswers(structure, types, scenario) {
     const leaf = (path, type, node) => {
       const k = path.toLowerCase(); const has = (w) => k.includes(w);
@@ -298,7 +300,7 @@
 
   // ---- host → app ----------------------------------------------------------
   function send(msg) { if (!state.origin || !frame.contentWindow) return; frame.contentWindow.postMessage(msg, state.origin); }
-  function patientForApp() { if (!state.patient) return null; return { ...state.patient, ref: state.refs[`${state.origin}:${state.patient.id}`] ?? null }; }
+  function patientForApp() { if (!state.patient) return null; return { ...state.patient, ref: state.refs[`${state.appKey}:${state.patient.id}`] ?? null }; }
   function sendPatient(reason) {
     if (reason === 'ready') state.ready = true;
     const p = patientForApp();
@@ -313,7 +315,7 @@
       if (onlyId && id !== onlyId) continue;
       const key = `${sub.hash}|${state.contextVersion}|${state.patient.id}`;
       let answers, cached = false;
-      if (sub.lastKey === key) { answers = sub.lastAnswers; cached = true; } else { answers = mockAnswers(sub.structure, sub.types, state.scenario); sub.lastKey = key; sub.lastAnswers = answers; }
+      if (sub.lastKey === key) { answers = sub.lastAnswers; cached = true; } else { answers = sub.summary ? mockSummary(state.scenario) : mockAnswers(sub.structure, sub.types, state.scenario); sub.lastKey = key; sub.lastAnswers = answers; }
       send({ type: 'comprehend:answers', id, patientId: state.patient.id, answers, contextVersion: state.contextVersion, answeredAt: new Date().toISOString(), partial: false, errors: [] });
       log('out', `answers [${id}] v${state.contextVersion} ${cached ? '(cached)' : '(' + reason + ', ' + state.scenario + ')'}`);
     }
@@ -336,7 +338,7 @@
         }
         let md = typeof msg.markdown === 'string' ? msg.markdown : ''; if (md.length > MAX_BUFFER) md = md.slice(0, MAX_BUFFER) + '\n\n_[truncated at 8 KB]_';
         state.buffers.set(state.patient.id, { markdown: md, name: msg.name, yourId: msg.yourId ?? null, providedAt: new Date().toISOString() });
-        if (msg.yourId != null) { state.refs[`${state.origin}:${state.patient.id}`] = String(msg.yourId); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
+        if (msg.yourId != null) { state.refs[`${state.appKey}:${state.patient.id}`] = String(msg.yourId); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
         state.lastMismatch = null; renderBuffer(); renderLink(); break;
       }
       case 'comprehend:clearContext': {
@@ -347,8 +349,9 @@
         if (!msg.id) return;
         if (!state.subs.has(msg.id) && state.subs.size >= MAX_SUBS) return sendError(msg.id, 'TOO_MANY_SUBSCRIPTIONS');
         const types = typesOf(msg.structure || {});
-        state.subs.set(msg.id, { structure: msg.structure, types, hash: hash(msg.structure), lastKey: null, lastAnswers: null });
-        log('in', `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
+        const summary = Object.keys(types).length === 0;   // nothing asked → one plain-text summary comes back
+        state.subs.set(msg.id, { structure: msg.structure, types, summary, hash: hash(msg.structure || {}), lastKey: null, lastAnswers: null });
+        log('in', summary ? `subscribe [${msg.id}] empty structure → summary mode` : `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
         renderSubs(); evaluate('subscribe', msg.id); break;
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
@@ -372,7 +375,7 @@
     $('subCount').textContent = state.subs.size;
     const keyNow = (s) => state.patient ? `${s.hash}|${state.contextVersion}|${state.patient.id}` : null;
     const pill = (s) => !s.lastAnswers ? '<span class="pill">pending</span>' : s.lastKey === keyNow(s) ? '<span class="pill ok">answered</span>' : '<span class="pill" style="background:#fef3c7;color:#92400e">stale — press Comprehend</span>';
-    $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${Object.keys(s.types).length} leaves ${pill(s)}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
+    $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${s.summary ? 'summary (no structure)' : Object.keys(s.types).length + ' leaves'} ${pill(s)}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
   }
   function renderLink() {
     const el = $('linkStatus'); el.className = 'status'; $('clinicianToast').innerHTML = '';
@@ -383,7 +386,7 @@
       return;
     }
     if (!state.patient) { el.textContent = 'No chart open in Comprehend.'; return; }
-    const ref = state.refs[`${state.origin}:${state.patient.id}`];
+    const ref = state.refs[`${state.appKey}:${state.patient.id}`];
     const b = state.buffers.get(state.patient.id);
     if (b) { el.className = 'status ok'; el.textContent = `Comprehend: ${state.patient.name} ↔ your app: ${b.name}${ref ? ` · linked as ${ref}` : ' · no id given'}`; }
     else el.textContent = ref ? `Linked before as ${ref} — your app should open that chart on patient(ready/changed).` : `Open ${state.patient.name} in your app to link.`;
@@ -391,7 +394,8 @@
 
   function load(url) {
     let u; try { u = new URL(url); } catch (e) { $('targetStatus').textContent = 'Enter a full URL, e.g. http://localhost:5173/'; $('targetStatus').className = 'status bad'; return; }
-    state.origin = u.origin; state.ready = false; state.subs.clear(); state.lastMismatch = null;
+    state.origin = u.origin; state.appKey = u.origin + u.pathname;   // links are per app (production: per registered app id), not per origin
+    state.ready = false; state.subs.clear(); state.lastMismatch = null;
     u.searchParams.set('comprehend', '1');
     if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
     frame.src = u.toString();

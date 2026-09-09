@@ -224,23 +224,29 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
     <div class="step"><div class="num">2</div><div>
       <h3 style="margin:4px 0">Handle the patient</h3>
-      <p class="fine">One callback. Comprehend hands you a <em>patient handle</em> — who it has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note, or pressed <em>Refresh</em>). Find that person in your system, tell Comprehend what you know about them, ask your questions. Same code path every time.</p>
-      <pre><code>comprehend.on(<span class="s">'patient'</span>, <span class="k">function</span> onPatient(patient, { reason }) {
+      <p class="fine">One callback. Comprehend hands you a <em>patient handle</em> — who it has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note, or pressed <em>Refresh</em>). Find that person in your system (or offer to create them), open their chart in your UI, and once it's up, tell Comprehend what you know and ask your questions. Same code path every time. If the clinician picks a different patient inside your app, call <code>setContext</code> again from the same place.</p>
+      <pre><code>comprehend.on(<span class="s">'patient'</span>, <span class="k">async function</span> onPatient(patient, { reason }) {
   <span class="k">if</span> (!patient) <span class="k">return</span>;                        <span class="c">// Comprehend has no chart open</span>
+  <span class="c">// patient = { id, name, dob, yourId, setContext(), clearContext() }</span>
 
   <span class="c">// ---- your business logic -------------------------</span>
-  <span class="k">const</span> comprehendId   = patient.id;           <span class="c">// stable per patient, per clinic</span>
-  <span class="k">const</span> comprehendName = patient.name;         <span class="c">// "Ann Kim"</span>
-  <span class="k">const</span> mine = byId(patient.yourId) || byName(comprehendName);   <span class="c">// who this is in YOUR system</span>
-  <span class="k">if</span> (!mine) <span class="k">return</span>;                           <span class="c">// the clinician hasn't opened them in your app yet</span>
+  <span class="k">let</span> mine = byId(patient.yourId) || byName(patient.name);   <span class="c">// who this is in YOUR system</span>
+  <span class="k">if</span> (!mine) {
+    <span class="c">// Not in your system yet — offer to create them from what Comprehend knows.</span>
+    mine = <span class="k">await</span> offerToCreatePatient({ name: patient.name, dob: patient.dob });
+    <span class="k">if</span> (!mine) <span class="k">return</span>;                        <span class="c">// the clinician said no; wait for the next patient event</span>
+  }
 
-  <span class="c">// Tell Comprehend what you know. This call is also what links the two records —</span>
-  <span class="c">// next visit, patient.yourId arrives already set to mine.id.</span>
-  patient.setContext(<span class="s">`## Home program — last 7 days
+  openChart(mine);                               <span class="c">// navigate your UI to this patient …</span>
+
+  onChartLoaded(mine, () =&gt; {                    <span class="c">// … and once that page is up, tell Comprehend what you know.</span>
+    <span class="c">// This call is also what links the two records — next visit, patient.yourId === mine.id.</span>
+    patient.setContext(<span class="s">`## Home program — last 7 days
 - Adherence: ${mine.adherence}
 - Pain trend: ${mine.painTrend}`</span>, { id: mine.id, name: mine.fullName });
 
-  askAboutTheVisit(mine);                        <span class="c">// step 3</span>
+    askAboutTheVisit(mine);                      <span class="c">// step 3</span>
+  });
 });</code></pre>
     </div></div>
 
@@ -268,6 +274,9 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 }
 <span class="c">// answers → { performed: { 'Sit-to-stand': true, 'Hip hinge': false }, pain_today: 3,</span>
 <span class="c">//             symptoms: ['pain'], plan: 'progress', changes: [{ exercise: 'Hip hinge', dosage: '2x10' }], patient_said: '…' }</span></code></pre>
+      <p class="fine" style="margin-top:12px">Nothing specific to ask yet? Ask for nothing. An empty structure — <code>{}</code>, <code>''</code> or <code>null</code> — gives you one plain-text summary of the visit as it relates to your app, given the context you set. A string, not an object; empty when nothing relevant was said.</p>
+      <pre><code>comprehend.subscribe({}, (summary) =&gt; show(summary));
+<span class="c">// summary → "Patient reported doing the program most days but skipped hip hinge because of knee pain; PT regressed it and progressed sit-to-stand to 3x12."</span></code></pre>
     </div></div>
 
     <div class="cols" style="margin-top:8px">

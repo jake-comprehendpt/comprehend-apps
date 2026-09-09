@@ -147,6 +147,12 @@
   //   leaf   = 'type — prompt' | { _type?, _description?, _choices?, _existingValue? }
   //   object = { key: leaf | object | list }
   //   list   = [ row, ... ]  (first row is the prototype)
+  function isEmptyStructure(s) {
+    if (s == null) return true;
+    if (typeof s === 'string') return !s.trim();
+    return typeof s === 'object' && !Array.isArray(s) && Object.keys(s).length === 0;
+  }
+
   function validateStructure(structure) {
     var leaves = 0;
     function isLeafObject(v) {
@@ -225,7 +231,10 @@
 
     subscribe: function (structure, onAnswers) {
       if (typeof onAnswers !== 'function') throw raise('BAD_SUBSCRIBE', 'subscribe(structure, (answers, patient, meta) => …)');
-      var invalid = validateStructure(structure);
+      // Nothing to ask? Send nothing: '' / null / {} → the answer is one plain-text
+      // summary of the visit as it relates to your app (a string, not an object).
+      if (isEmptyStructure(structure)) structure = {};
+      var invalid = structure && Object.keys(structure).length === 0 ? null : validateStructure(structure);
       if (invalid) { var e = raise('BAD_STRUCTURE', invalid.problem); e.reason = invalid.reason; throw e; }
       if (Object.keys(subs).length >= MAX_SUBSCRIPTIONS) throw raise('TOO_MANY_SUBSCRIPTIONS', 'max ' + MAX_SUBSCRIPTIONS + ' live subscriptions per app');
       var id = 'sub_' + (++seq) + '_' + Date.now().toString(36);

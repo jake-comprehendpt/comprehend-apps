@@ -120,8 +120,16 @@
   }
   function render() {
     renderRoster(); renderChip();
+    if (offer && !current) {
+      $('content').innerHTML = `<div class="card" style="padding:16px 18px;max-width:520px"><h3 style="border:0;padding:0 0 6px;font-size:15px">${offer.name} isn't in Forceline yet</h3>
+        <p style="margin:0 0 12px;color:var(--muted)">Comprehend has <b>${offer.name}</b>${offer.dob ? ` (DOB ${offer.dob})` : ''} open. Create them here to run a first test — Comprehend links the two records on the first context you send.</p>
+        <button id="createPt" style="background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer">Create in Forceline</button>
+        <button id="pickPt" style="background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer;margin-left:6px">Pick an existing athlete</button></div>`;
+      $('createPt').onclick = createFromComprehend; $('pickPt').onclick = () => { offer = null; render(); };
+      return;
+    }
     if (!current) { $('content').innerHTML = '<p style="color:var(--muted)">Select an athlete.</p>'; return; }
-    const p = current, main = p.tests[0], asym = main.asym;
+    const p = current, main = p.tests[0] || { name: 'No test yet', unit: '', value: '—', asym: null, note: 'Run a first test' }, asym = main.asym;
     const bar = asym == null ? '' : `<div class="asym"><div class="lbl"><span>Left</span><span>${main.name} asymmetry · ${Math.abs(asym)}% ${asym < 0 ? 'L' : 'R'} deficit${Math.abs(asym) > 10 ? ' · above 10% threshold' : ''}</span><span>Right</span></div>
       <div class="bar"><i></i><b class="${Math.abs(asym) > 10 ? 'bad' : ''}" style="${asym < 0 ? `right:50%;width:${Math.abs(asym) * 2}%` : `left:50%;width:${Math.abs(asym) * 2}%`}"></b></div></div>`;
     $('content').innerHTML = `
@@ -140,22 +148,36 @@
         <div class="card"><h3>In-clinic today <span class="tag">from Comprehend</span></h3><div class="visit">${renderVisit(p)}</div></div>
       </div>`;
   }
-  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); render(); sync(comprehend.patient); });
+  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); offer = null; openChart(comprehend.patient); });
 
   // ---- Comprehend -----------------------------------------------------------------------------
   const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
   const byName = (name) => ROSTER.find((p) => nameKey(p.name) === nameKey(name)) || null;
+  let offer = null;   // Comprehend's patient who isn't in Forceline yet → "create them?" banner
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
-    if (patient && patient.yourId) { current = ROSTER.find((p) => p.id === patient.yourId) || current; }
-    else if (patient && !current) { current = byName(patient.name); }
-    render(); sync(patient);
+    offer = null;
+    if (patient) {
+      const linked = patient.yourId && ROSTER.find((p) => p.id === patient.yourId);   // linked before: zero clicks
+      current = linked || byName(patient.name) || null;                               // else open them by name
+      if (!current) offer = { name: patient.name, dob: patient.dob };                 // not in Forceline: offer to create
+    }
+    openChart(patient);
   });
+  function openChart(patient) { render(); onChartLoaded(() => sync(patient)); }   // your router + page-loaded hook, in miniature
+  function onChartLoaded(fn) { setTimeout(fn, 0); }   // after render has committed (rAF would stall in a hidden tab)
+  function createFromComprehend() {
+    if (!offer) return;
+    const [first, ...rest] = offer.name.split(' '); const id = 'F-' + (80 + ROSTER.length);
+    ROSTER.push({ id, name: rest.length ? `${rest.join(' ')}, ${first}` : offer.name, dob: offer.dob || '—', dx: 'New athlete', side: '—', latest: '—', tests: [], history: [] });
+    current = ROSTER[ROSTER.length - 1]; offer = null; log(`created ${current.name} (${id}) from Comprehend's chart`); openChart(comprehend.patient);
+  }
   comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
   function sync(patient) {
     if (!patient || !current) return;
     const p = current, main = p.tests[0];
+    if (!main) { patient.setContext(`## Forceline\n- New athlete, no force plate test on file yet`, { id: p.id, name: p.name }); log(`setContext → ${patient.id} as "${p.name}" (${p.id}) — no tests yet`); return; }
     patient.setContext(`## Forceline — ${main.name} ${p.latest}
 - ${main.name}: ${main.value} ${main.unit}${main.asym != null ? `; L/R asymmetry ${Math.abs(main.asym)}% ${main.asym < 0 ? 'L' : 'R'} deficit${Math.abs(main.asym) > 10 ? ' (above 10% threshold)' : ''}` : ''}
 ${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}

@@ -148,6 +148,14 @@
   }
   function render() {
     renderRoster(); renderChip();
+    if (offer && !current) {
+      $('content').innerHTML = `<div class="card" style="padding:16px 18px;max-width:520px"><h3 style="border:0;padding:0 0 6px;font-size:15px">${offer.name} isn't in Cadence yet</h3>
+        <p style="margin:0 0 12px;color:var(--muted)">Comprehend has <b>${offer.name}</b>${offer.dob ? ` (DOB ${offer.dob})` : ''} open. Create them here to start a program — Comprehend links the two records on the first context you send.</p>
+        <button id="createPt" style="background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer">Create ${offer.name.split(' ')[0]} in Cadence</button>
+        <button id="pickPt" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer;margin-left:6px">Pick an existing patient</button></div>`;
+      $('createPt').onclick = createFromComprehend; $('pickPt').onclick = () => { offer = null; render(); };
+      return;
+    }
     if (!current) { $('content').innerHTML = '<p style="color:var(--muted)">Select a patient.</p>'; return; }
     const p = current, last = p.pain[p.pain.length - 1], first = p.pain[0];
     $('content').innerHTML = `
@@ -168,17 +176,34 @@
         <div class="card"><h3>In-clinic today <span class="tag">from Comprehend</span></h3><div class="visit">${renderVisit(p)}</div></div>
       </div>`;
   }
-  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); render(); sync(comprehend.patient); });
+  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); offer = null; openChart(comprehend.patient); });
 
   // ---- Comprehend: one event, then per-patient context + questions ---------------------------
   const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
   const byName = (name) => ROSTER.find((p) => nameKey(p.name) === nameKey(name)) || null;
+  let offer = null;   // Comprehend's patient who isn't in Cadence yet → "create them?" banner
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
-    if (patient && patient.yourId) { current = ROSTER.find((p) => p.id === patient.yourId) || current; }   // linked before: zero clicks
-    else if (patient && !current) { current = byName(patient.name); }                                       // not linked yet: prefill by name
-    render(); sync(patient);
+    offer = null;
+    if (patient) {
+      const linked = patient.yourId && ROSTER.find((p) => p.id === patient.yourId);   // linked before: zero clicks
+      current = linked || byName(patient.name) || null;                               // else open them by name
+      if (!current) offer = { name: patient.name, dob: patient.dob };                 // not in Cadence: offer to create
+    }
+    openChart(patient);
   });
+  // "Open the chart, and once it's up, tell Comprehend what you know." In a real app this is your
+  // router + page-loaded hook; here render() is synchronous so the hook runs right after it.
+  function openChart(patient) { render(); onChartLoaded(() => sync(patient)); }
+  function onChartLoaded(fn) { setTimeout(fn, 0); }   // after render has committed (rAF would stall in a hidden tab)
+  function createFromComprehend() {
+    if (!offer) return;
+    const id = 'C-' + (1000 + ROSTER.length + 1);
+    ROSTER.push({ id, name: offer.name, dob: offer.dob || '—', dx: 'New patient', pt: '—', start: 'today', adherence: 0, sessions: 0, pain: [0], rtm: 0, flagged: '', program: [] });
+    current = ROSTER[ROSTER.length - 1]; offer = null;
+    log(`created ${current.name} (${id}) from Comprehend's chart`);
+    openChart(comprehend.patient);
+  }
   comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
   function sync(patient) {
@@ -198,8 +223,8 @@ ${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name });
     performed._description = 'Only what was performed or reviewed in the room today';
     for (const ex of p.program) performed[ex.name] = { _type: 'boolean' };
     unsubscribe = comprehend.subscribe({
-      performed,
-      changes: [{ exercise: { _choices: p.program.map((e) => e.name).concat(['(new exercise)']) },
+      ...(p.program.length ? { performed } : {}),                        // a brand-new patient has no program yet
+      changes: [{ exercise: p.program.length ? { _choices: p.program.map((e) => e.name).concat(['(new exercise)']) } : 'exercise the PT named',
                   change:   { _choices: ['progressed', 'regressed', 'removed', 'added', 'kept'] },
                   dosage:   'sets x reps or time, if the PT stated one' }],
       adherence_report: 'what the patient said about doing the home program',

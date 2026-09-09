@@ -33,19 +33,28 @@ comprehend.patient;                           // the current handle, or null
 ```html
 <script src="https://app.comprehendpt.com/comprehend.js"></script>
 <script>
-  comprehend.on('patient', function onPatient(patient, { reason }) {
+  comprehend.on('patient', async function onPatient(patient, { reason }) {
     if (!patient) return;                                        // Comprehend has no chart open
+    // patient = { id, name, dob, yourId, setContext(), clearContext() }
 
     // ---- your business logic ---------------------------------------------
-    const mine = byId(patient.yourId) || byName(patient.name);   // who this is in YOUR system
-    if (!mine) return;                                           // clinician hasn't opened them in your app yet
+    let mine = byId(patient.yourId) || byName(patient.name);     // who this is in YOUR system
+    if (!mine) {
+      // Not in your system yet — offer to create them from what Comprehend knows.
+      mine = await offerToCreatePatient({ name: patient.name, dob: patient.dob });
+      if (!mine) return;                                         // the clinician said no
+    }
 
-    // Tell Comprehend what you know. This call is also the link — next visit, patient.yourId === mine.id.
-    patient.setContext(`## Home program — last 7 days
+    openChart(mine);                                             // navigate your UI to this patient …
+
+    onChartLoaded(mine, () => {                                  // … and once that page is up, tell Comprehend what you know.
+      // This call is also the link — next visit, patient.yourId === mine.id.
+      patient.setContext(`## Home program — last 7 days
   - Adherence: ${mine.adherence}
   - Pain trend: ${mine.painTrend}`, { id: mine.id, name: mine.fullName });
 
-    askAboutTheVisit(mine);
+      askAboutTheVisit(mine);
+    });
   });
 
   let unsubscribe;
@@ -67,6 +76,10 @@ comprehend.patient;                           // the current handle, or null
       patient_said: 'what the patient said about doing the home program',
     }, (answers) => render(answers));
   }
+
+  // Nothing specific to ask yet? Ask for nothing: an empty structure ({}, '' or null) returns ONE plain-text
+  // summary of the visit as it relates to your app, given the context you set — a string, not an object.
+  comprehend.subscribe({}, (summary) => show(summary));
 </script>
 ```
 

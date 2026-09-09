@@ -46,8 +46,8 @@
   var MAX_SUBSCRIPTIONS = 10;
   var MAX_LEAVES = 200;
   var MAX_BYTES = 32 * 1024;
-  var TYPES = ['boolean', 'number', 'string', 'string[]', 'number[]'];
-  var LEAF_KEYS = ['_type', '_description', '_choices', '_existingValue'];
+  var TYPES = ['boolean', 'number', 'integer', 'string', 'string[]', 'number[]'];
+  var LEAF_KEYS = ['_type', '_description', '_choices', '_existingValue', '_multiple'];
 
   var ready = false;
   var current = null;        // the current patient handle, or null
@@ -178,6 +178,7 @@
         }
         if (node._type != null && TYPES.indexOf(node._type) === -1) return 'unknown _type "' + node._type + '" at "' + path + '"';
         if (node._choices != null && !Array.isArray(node._choices)) return '_choices must be an array at "' + path + '"';
+        if (node._multiple != null && (typeof node._multiple !== 'boolean' || !node._choices)) return '_multiple must be true/false and needs _choices at "' + path + '"';
         leaves++;
         return null;
       }
@@ -186,6 +187,11 @@
       for (var c = 0; c < childKeys.length; c++) {
         var key = childKeys[c];
         if (key === '_existingValue') continue; // row-level marker on a list row
+        if (key === '_description') {             // branch-level context: allowed, must be a string, not a leaf
+          if (typeof node[key] !== 'string') return '_description on a branch must be a string at "' + path + '"';
+          continue;
+        }
+        if (key.charAt(0) === '_') return 'unknown key "' + key + '" on a branch at "' + path + '"';
         var problem = walk(node[key], path ? path + '.' + key : key);
         if (problem) return problem;
       }
@@ -234,4 +240,10 @@
   };
 
   global.comprehend = comprehend;
+
+  // Say hello. The host answers with comprehend:patient (reason 'ready'), so the
+  // first patient event arrives whether this script ran before the frame's load
+  // event, was injected later by a framework, or the page is a slow SPA. Sent
+  // directly — the outbox only opens once that first patient message lands.
+  try { global.parent.postMessage({ type: 'comprehend:hello', version: 3 }, HOST_ORIGIN); } catch (e) { /* not framed */ }
 })(window);

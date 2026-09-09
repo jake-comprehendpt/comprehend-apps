@@ -156,8 +156,7 @@
     <div class="cols">
       <div class="card"><h3>In the room</h3><p>Comprehend is listening to the visit. So ask it — about <em>your</em> patient: was each prescribed exercise performed today? What was progressed, regressed, dropped? What did the patient report about doing the program? What's the plan? Answers come back in the shape you asked for, as the note is written. It's a signal from inside the visit that has never existed before.</p></div>
       <div class="card"><h3>In the chart — every EMR</h3><p>Comprehend writes the note across 25+ PT EMRs — WebPT, Raintree, Prompt, Net Health, Clinicient, Fusion, Jane, athenahealth and more. What you know about the patient enters that note, attributed to you, so it lands in whatever EMR the clinic runs. One connection, no EMR partnership. And because the note documents the data review and the conversation, RTM and HEP programs get documented the way billing needs.</p></div>
-      <div class="card"><h3>Your app, as it is</h3><p>Nothing to rebuild. Your existing web app — your UI, your login, your workflow — opens inside Comprehend as a panel next to the note. One script tag connects it. You add the events you care about and the questions you want answered. This is a weekend, not a roadmap item.</p></div>
-      <div class="card"><h3>Where clinicians already are</h3><p>You live in the clinician's workflow — the Comprehend web app and the Chrome side panel inside the EMR — not in a portal they have to remember. A clinic enables you once; every clinician in it sees you. Listed partners get a one-click card in every clinic's admin.</p></div>
+      <div class="card"><h3>Your app, as it is</h3><p>Nothing to rebuild. Your existing web app — your UI, your login, your workflow — opens inside Comprehend as a panel next to the note, on the web and in the Chrome side panel inside the EMR. One script tag connects it. A clinic turns you on once and every clinician in it sees you, where they already work — not in a portal they have to remember.</p></div>
     </div>
 
     <h3 style="margin:26px 0 6px">What it looks like in the note</h3>
@@ -224,38 +223,56 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     </div></div>
 
     <div class="step"><div class="num">2</div><div>
-      <h3 style="margin:4px 0">Listen for the patient</h3>
-      <p class="fine">One event, one handler. We hand you a <em>patient handle</em> — who Comprehend has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note or pressed <em>Refresh apps</em> — send your latest). Same code path every time.</p>
-      <pre><code>comprehend.on(<span class="s">'patient'</span>, (patient, { reason }) =&gt; {
-  <span class="k">if</span> (!patient) <span class="k">return</span>;                                  <span class="c">// no chart open</span>
-  <span class="k">const</span> mine = byId(patient.yourId) || byName(patient.name);
-  <span class="k">if</span> (mine) share(patient, mine);                         <span class="c">// steps 3 and 4</span>
+      <h3 style="margin:4px 0">Handle the patient</h3>
+      <p class="fine">One callback. Comprehend hands you a <em>patient handle</em> — who it has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note, or pressed <em>Refresh</em>). Find that person in your system, tell Comprehend what you know about them, ask your questions. Same code path every time.</p>
+      <pre><code>comprehend.on(<span class="s">'patient'</span>, <span class="k">function</span> onPatient(patient, { reason }) {
+  <span class="k">if</span> (!patient) <span class="k">return</span>;                        <span class="c">// Comprehend has no chart open</span>
+
+  <span class="c">// ---- your business logic -------------------------</span>
+  <span class="k">const</span> comprehendId   = patient.id;           <span class="c">// stable per patient, per clinic</span>
+  <span class="k">const</span> comprehendName = patient.name;         <span class="c">// "Ann Kim"</span>
+  <span class="k">const</span> mine = byId(patient.yourId) || byName(comprehendName);   <span class="c">// who this is in YOUR system</span>
+  <span class="k">if</span> (!mine) <span class="k">return</span>;                           <span class="c">// the clinician hasn't opened them in your app yet</span>
+
+  <span class="c">// Tell Comprehend what you know. This call is also what links the two records —</span>
+  <span class="c">// next visit, patient.yourId arrives already set to mine.id.</span>
+  patient.setContext(<span class="s">`## Home program — last 7 days
+- Adherence: ${mine.adherence}
+- Pain trend: ${mine.painTrend}`</span>, { id: mine.id, name: mine.fullName });
+
+  askAboutTheVisit(mine);                        <span class="c">// step 3</span>
 });</code></pre>
     </div></div>
 
     <div class="step"><div class="num">3</div><div>
-      <h3 style="margin:4px 0">Set context — tell Comprehend what you know</h3>
-      <p class="fine">A short markdown summary about <em>your</em> patient. It lands in the visit's Clinical Facts, attributed to you, and the note is written with it in view. Pass your patient's <code>id</code> and <code>name</code>: that first call is also what links the two records, and next visit the handle arrives with <code>yourId</code> already set.</p>
-      <pre><code>patient.setContext(<span class="s">`## Home program — last 7 days
-- Adherence: ${mine.adherence}
-- Pain trend: ${mine.painTrend}
-- Program: ${mine.program.join(', ')}`</span>, { id: mine.id, name: mine.fullName });</code></pre>
-    </div></div>
-
-    <div class="step"><div class="num">4</div><div>
-      <h3 style="margin:4px 0">Subscribe — ask the visit, about <em>this</em> patient</h3>
-      <p class="fine">Two arguments: the <em>structure</em> you want back, and a <em>callback</em> that receives it filled in. Keys are your names; values say the type and, in plain words, the question. Build the structure from the patient's own program — one boolean per prescribed exercise — and subscribe again when the patient changes. Comprehend answers from the live encounter when the clinician acts and pushes the result to you.</p>
-      <pre><code><span class="k">const</span> unsubscribe = comprehend.subscribe({
-  performed:  { <span class="s">'Sit-to-stand'</span>: <span class="s">'boolean'</span>, <span class="s">'Hip hinge'</span>: <span class="s">'boolean'</span> },
-  pain_today: <span class="s">'number — 0-10 as reported, or null'</span>,
-  adherence:  <span class="s">'string — what the patient said about the home program'</span>,
-}, (answers) =&gt; render(answers));
-<span class="c">// answers → { performed: { 'Sit-to-stand': true, 'Hip hinge': false }, pain_today: 3, adherence: '…' }</span></code></pre>
+      <h3 style="margin:4px 0">Ask about the visit</h3>
+      <p class="fine">Two arguments: the <em>structure</em> you want back and a <em>callback</em> that receives it filled in. Keys are your names. A plain string is a free-text question; add <code>_type</code>, <code>_choices</code> or a nested branch when you want the answer constrained. Build it from the patient's own data — one yes/no per prescribed exercise, choices from the exercises you actually assigned — and call it again when the patient changes.</p>
+      <pre><code><span class="k">let</span> unsubscribe;
+<span class="k">function</span> askAboutTheVisit(mine) {
+  <span class="k">if</span> (unsubscribe) unsubscribe();               <span class="c">// questions are per patient</span>
+  unsubscribe = comprehend.subscribe({
+    performed: {                                 <span class="c">// nest as deep as you like</span>
+      _description: <span class="s">'Only what was done or reviewed in the room today'</span>,   <span class="c">// context for a whole branch</span>
+      <span class="s">'Sit-to-stand'</span>: { _type: <span class="s">'boolean'</span> },        <span class="c">// yes / no</span>
+      <span class="s">'Hip hinge'</span>:    { _type: <span class="s">'boolean'</span> },
+    },
+    pain_today: { _type: <span class="s">'integer'</span>, _description: <span class="s">'0-10 as the patient reported it, or null'</span> },
+    symptoms:   { _choices: [<span class="s">'pain'</span>, <span class="s">'stiffness'</span>, <span class="s">'swelling'</span>, <span class="s">'giving way'</span>], _multiple: <span class="k">true</span> },   <span class="c">// pick any</span>
+    plan:       { _choices: [<span class="s">'progress'</span>, <span class="s">'hold'</span>, <span class="s">'regress'</span>, <span class="s">'discharge'</span>] },                    <span class="c">// pick one</span>
+    changes: [{                                  <span class="c">// a list — one row per change the PT stated</span>
+      exercise: { _choices: mine.program },      <span class="c">// from YOUR data — this is where answers get sharp</span>
+      dosage:   <span class="s">'sets x reps or time, if stated'</span>,   <span class="c">// a plain string is a free-text answer</span>
+    }],
+    patient_said: <span class="s">'what the patient said about doing the home program'</span>,
+  }, (answers) =&gt; render(answers));
+}
+<span class="c">// answers → { performed: { 'Sit-to-stand': true, 'Hip hinge': false }, pain_today: 3,</span>
+<span class="c">//             symptoms: ['pain'], plan: 'progress', changes: [{ exercise: 'Hip hinge', dosage: '2x10' }], patient_said: '…' }</span></code></pre>
     </div></div>
 
     <div class="cols" style="margin-top:8px">
       <div class="card"><h3>Ready, without a ready event</h3><p>The first <code>patient</code> event fires exactly once per load, first, with <code>reason: 'ready'</code> — even when no chart is open (<code>patient</code> is <code>null</code>). Register callbacks whenever you like: before the handshake they queue; after it, a new listener is called immediately with the current state. Nothing can be missed.</p></div>
-      <div class="card"><h3>Typed, nested, lists</h3><p>Structures support nesting, enums (<code>_choices</code>), lists sized to the transcript, and <code>boolean / number / string / string[] / number[]</code>.</p></div>
+      <div class="card"><h3>Shape in, shape out</h3><p>Nest branches, put a <code>_description</code> on a leaf or a whole branch, constrain with <code>_type</code> (<code>boolean</code>, <code>integer</code>, <code>number</code>, <code>string</code>) or <code>_choices</code> (+ <code>_multiple</code> for pick-any), and use a one-row array for a list sized to the transcript.</p></div>
       <div class="card"><h3>Push, not poll</h3><p>You never ask on a timer. We compute when the clinician acts and cache when nothing changed. Every answer names the patient it's for.</p></div>
     </div>
   </section>
@@ -275,7 +292,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
       <tr><td><code>comprehend.patient</code></td><td>The current handle, or <code>null</code>, for whoever wants to pull.</td></tr>
     </table>
     <h3 style="margin:22px 0 6px">Structures</h3>
-    <p class="fine">A structure is a nested object whose <em>shape is the answer shape</em>. Leaves are shorthand strings — <code>'boolean — was RTM discussed?'</code> — or objects with <code>_type</code> (<code>boolean | number | string | string[] | number[]</code>), <code>_description</code>, <code>_choices</code>, <code>_existingValue</code>. An array with one prototype row is a list, sized to what the transcript supports. Fill <code>_choices</code> from your own data — that's where the answers get sharp.</p>
+    <p class="fine">A structure is a nested object whose <em>shape is the answer shape</em>. A plain string leaf is a free-text question. An object leaf constrains the answer: <code>_type</code> (<code>boolean | integer | number | string</code>), <code>_choices</code> (add <code>_multiple: true</code> for pick-any), <code>_description</code> — which also works on a branch, once, for context. An array with one prototype row is a list, sized to what the transcript supports. Fill <code>_choices</code> from your own data — that's where the answers get sharp.</p>
   </section>
 
   <section id="trust">

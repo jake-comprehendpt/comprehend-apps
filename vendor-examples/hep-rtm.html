@@ -51,6 +51,28 @@
   .change { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin: 2px 4px 2px 0; }
   details.dev { margin-top: 18px; font-size: 12px; color: var(--muted); }
   details.dev summary { cursor: pointer; } details.dev pre { background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px; max-height: 200px; overflow: auto; font-size: 11px; }
+
+  /* ---- small widths (Comprehend's side panel is ~350px) ------------------------------- */
+  @media (max-width: 720px) {
+    nav { padding: 0 12px; gap: 8px; } nav small { display: none; } .chip { font-size: 11px; padding: 4px 8px; }
+    main { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; }
+    aside h4 { display: none; }
+    #roster { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .pt { width: auto; flex: none; padding: 6px 10px 6px 6px; border: 1px solid var(--line); border-radius: 999px; }
+    .pt .meta, .pt .adh { display: none; } .pt .avatar { width: 24px; height: 24px; font-size: 10px; }
+    section { padding: 12px 12px 28px; }
+    .head { flex-direction: column; align-items: flex-start; gap: 2px; } .head h1 { font-size: 18px; } .head .sub { font-size: 12px; }
+    .tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .tile { padding: 10px 12px; } .tile b { font-size: 18px; }
+    .grid { grid-template-columns: 1fr; }
+    th:nth-child(2), td:nth-child(2) { display: none; }   /* dose column goes first */
+    th, td { padding: 7px 10px; }
+  }
+  @media (max-width: 400px) {
+    .tiles { grid-template-columns: 1fr 1fr; } .tile small { font-size: 10px; }
+    .week i { width: 7px; height: 7px; }
+    .kv { grid-template-columns: 1fr; gap: 2px; } .kv span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-top: 6px; }
+  }
 </style>
 </head>
 <body>
@@ -173,14 +195,15 @@ ${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name });
     // 2. Questions built from THIS patient's program.
     if (unsubscribe) unsubscribe();
     const performed = {};
-    for (const ex of p.program) performed[ex.name] = `boolean — was "${ex.name}" performed or reviewed in today's visit?`;
+    performed._description = 'Only what was performed or reviewed in the room today';
+    for (const ex of p.program) performed[ex.name] = { _type: 'boolean' };
     unsubscribe = comprehend.subscribe({
       performed,
       changes: [{ exercise: { _choices: p.program.map((e) => e.name).concat(['(new exercise)']) },
                   change:   { _choices: ['progressed', 'regressed', 'removed', 'added', 'kept'] },
-                  dosage:   { _description: 'sets x reps or time, if the PT stated one' } }],
-      adherence_report: 'string — what the patient said about doing the home program',
-      pain_today:       'number — pain reported today, 0-10, or null',
+                  dosage:   'sets x reps or time, if the PT stated one' }],
+      adherence_report: 'what the patient said about doing the home program',
+      pain_today:       { _type: 'integer', _description: 'pain reported today, 0-10, or null' },
     }, (answers, forPatient, meta) => {
       latest = { patientId: forPatient.id, answers };
       log(`answers ← v${meta.version}${meta.partial ? ' (partial)' : ''} for ${forPatient.name || forPatient.id}`);

@@ -254,7 +254,7 @@
   }
 
   // ---- structure → types, mock answers (mirrors flexCompile / evaluator) --------
-  const TYPES = ['boolean', 'number', 'string', 'string[]', 'number[]'];
+  const TYPES = ['boolean', 'number', 'integer', 'string', 'string[]', 'number[]'];
   const SHORTHAND = /^\s*(boolean|number|string|string\[\]|number\[\])\s+[—–-]\s+([\s\S]*)$/;
   const isLeafObj = (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((k) => k[0] === '_');
   function typesOf(structure) {
@@ -262,8 +262,8 @@
     (function walk(node, path) {
       if (typeof node === 'string') { const m = node.match(SHORTHAND); types[path] = m ? m[1] : 'string'; return; }
       if (Array.isArray(node)) { node.forEach((row) => walk(row, path + '[]')); return; }
-      if (isLeafObj(node)) { types[path] = TYPES.includes(node._type) ? node._type : 'string'; return; }
-      for (const k of Object.keys(node || {})) if (k !== '_existingValue') walk(node[k], path ? path + '.' + k : k);
+      if (isLeafObj(node)) { types[path] = node._choices && node._multiple === true ? 'string[]' : TYPES.includes(node._type) ? node._type : 'string'; return; }
+      for (const k of Object.keys(node || {})) if (k !== '_existingValue' && k !== '_description') walk(node[k], path ? path + '.' + k : k);
     })(structure, '');
     return types;
   }
@@ -273,8 +273,8 @@
       let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0;
       switch (type) {
         case 'boolean': if (has('rtm') || has('remote')) return scenario === 'rtm'; if (scenario === 'none') return false; return (h & 1) === 0;
-        case 'number': if (has('pain')) return scenario === 'none' ? null : 4; return scenario === 'none' ? null : 3;
-        case 'string[]': if (has('change') || has('plan') || has('exercise')) return scenario === 'none' ? [] : ['sit-to-stand 3x12', 'bridge 2x10 (added)']; return [];
+        case 'number': case 'integer': if (has('pain')) return scenario === 'none' ? null : 4; return scenario === 'none' ? null : 3;
+        case 'string[]': if (node && Array.isArray(node._choices) && node._choices.length) return scenario === 'none' ? [] : node._choices.slice(0, 1 + (Math.abs(h) % 2)); if (has('change') || has('plan') || has('exercise')) return scenario === 'none' ? [] : ['sit-to-stand 3x12', 'bridge 2x10 (added)']; return [];
         case 'number[]': return scenario === 'none' ? [] : [3, 4];
         default:
           if (node && Array.isArray(node._choices) && node._choices.length) return scenario === 'none' ? null : node._choices[Math.abs(h) % node._choices.length];
@@ -350,6 +350,7 @@
         renderSubs(); evaluate('subscribe', msg.id); break;
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
+      case 'comprehend:hello': log('in', `hello · comprehend.js v${msg.version} initialised — sending patient(ready)`); if (state.origin) sendPatient('ready'); break;
       case 'comprehend:ack': log('in', `ack · comprehend.js v${msg.version} loaded in ${msg.href || 'your page'}`); break;
     }
   });
@@ -395,7 +396,7 @@
     localStorage.setItem('comprehend_sandbox_target', url);
     renderSubs(); renderBuffer(); renderLink();
   }
-  frame.addEventListener('load', () => { if (state.origin) sendPatient('ready'); });
+  // patient(ready) goes out when comprehend.js says hello, not on load — a script injected after load would miss it.
 
   $('load').onclick = () => load($('target').value.trim());
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };

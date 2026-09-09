@@ -46,6 +46,26 @@
   .note { margin: 0 14px 14px; padding: 8px 12px; border-radius: 8px; background: #0f172a; color: #cbd5e1; font-size: 12.5px; }
   details.dev { margin-top: 18px; font-size: 12px; color: var(--muted); } details.dev summary { cursor: pointer; }
   details.dev pre { background: #05080f; color: #94a3b8; border-radius: 8px; padding: 10px; max-height: 200px; overflow: auto; font-size: 11px; }
+
+  /* ---- small widths (Comprehend's side panel is ~350px) ------------------------------- */
+  @media (max-width: 720px) {
+    nav { padding: 0 12px; gap: 8px; } nav small { display: none; } .chip { font-size: 11px; padding: 4px 8px; }
+    main { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; } aside h4 { display: none; }
+    #roster { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .pt { width: auto; flex: none; padding: 6px 10px 6px 6px; border: 1px solid var(--line); border-radius: 999px; }
+    .pt .meta { display: none; } .pt .avatar { width: 24px; height: 24px; font-size: 10px; }
+    section { padding: 12px 12px 28px; }
+    .head { flex-direction: column; align-items: flex-start; gap: 2px; } .head h1 { font-size: 18px; } .head .sub { font-size: 12px; }
+    .tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .tile { padding: 10px 12px; } .tile b { font-size: 18px; }
+    .grid { grid-template-columns: 1fr; }
+    th, td { padding: 7px 10px; }
+  }
+  @media (max-width: 400px) {
+    .tile small { font-size: 10px; }
+    .asym .lbl { font-size: 11px; flex-wrap: wrap; } .asym .lbl span:nth-child(2) { flex: 1 0 100%; order: -1; text-align: center; margin-bottom: 4px; }
+    .kv { grid-template-columns: 1fr; gap: 2px; } .kv span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-top: 6px; }
+  }
 </style>
 </head>
 <body>
@@ -95,7 +115,7 @@
     if (!a) return `<div class="empty">Comprehend fills this in from today's visit when the note is generated — which results the PT went over with ${display(p.name).split(' ')[0]}, the limb of concern, and any plan changes.</div>`;
     const rows = p.tests.map((t) => { const v = a.discussed ? a.discussed[t.name] : null;
       return `<div class="row"><span class="mark ${v === true ? 'yes' : ''}">${v === true ? '✓' : v === false ? '–' : '·'}</span>${t.name}<span style="margin-left:auto;color:var(--muted);font-size:12px">${v === true ? 'discussed' : v === false ? 'not discussed' : '—'}</span></div>`; }).join('');
-    const plan = (a.plan_changes || []).length ? a.plan_changes.map((c) => `<div>• ${c}</div>`).join('') : '<span style="color:var(--muted)">none stated</span>';
+    const plan = (a.plan_changes || []).length ? a.plan_changes.map((c) => `<div>• ${typeof c === 'string' ? c : c.change}</div>`).join('') : '<span style="color:var(--muted)">none stated</span>';
     return `${rows}<div class="kv"><span>Side of concern</span><div>${a.side_of_concern || '—'}</div><span>Plan changes</span><div>${plan}</div></div>`;
   }
   function render() {
@@ -143,11 +163,12 @@ ${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}
     log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
     if (unsubscribe) unsubscribe();
     const discussed = {};
-    for (const t of p.tests) discussed[t.name] = `boolean — was the ${t.name} result discussed with the patient today?`;
+    discussed._description = 'Which test results the PT went over with the patient today';
+    for (const t of p.tests) discussed[t.name] = { _type: 'boolean' };
     unsubscribe = comprehend.subscribe({
       discussed,
       side_of_concern: { _choices: ['left', 'right', 'both', 'none stated'], _description: 'limb the PT was concerned about' },
-      plan_changes: 'string[] — changes to the plan of care the PT stated (progressions, holds, referrals)',
+      plan_changes: [{ change: 'a change to the plan of care the PT stated (progression, hold, referral)' }],
     }, (answers, forPatient, meta) => {
       latest = { patientId: forPatient.id, answers };
       log(`answers ← v${meta.version} for ${forPatient.name || forPatient.id}`); render();

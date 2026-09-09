@@ -33,30 +33,40 @@ comprehend.patient;                           // the current handle, or null
 ```html
 <script src="https://app.comprehendpt.com/comprehend.js"></script>
 <script>
-  let unsubscribe = null;
+  comprehend.on('patient', function onPatient(patient, { reason }) {
+    if (!patient) return;                                        // Comprehend has no chart open
 
-  comprehend.on('patient', (patient, { reason }) => {
-    if (!patient) return;                                        // no chart open
-    const mine = patient.yourId ? byId(patient.yourId) : findByName(patient.name);   // yourId = the id you gave us last time
-    if (!mine) return;                                           // the clinician hasn't opened them in your app yet
+    // ---- your business logic ---------------------------------------------
+    const mine = byId(patient.yourId) || byName(patient.name);   // who this is in YOUR system
+    if (!mine) return;                                           // clinician hasn't opened them in your app yet
 
-    // CONTENT: what you know, and who you think this is. That call is the link.
+    // Tell Comprehend what you know. This call is also the link — next visit, patient.yourId === mine.id.
     patient.setContext(`## Home program — last 7 days
-- Adherence: ${mine.adherence}
-- Program: ${mine.program.join(', ')}`, { id: mine.id, name: mine.fullName });
+  - Adherence: ${mine.adherence}
+  - Pain trend: ${mine.painTrend}`, { id: mine.id, name: mine.fullName });
 
-    // QUESTIONS: built from THIS patient's program, re-declared whenever the patient changes.
-    if (unsubscribe) unsubscribe();
-    const performed = Object.fromEntries(mine.program.map((ex) => [ex, `boolean — was "${ex}" performed or reviewed in today's visit?`]));
-    unsubscribe = comprehend.subscribe({
-      performed,                                                                 // { "Sit-to-stand": true, "Hip hinge": false, ... }
-      changes: [{ exercise: { _choices: mine.program },
-                  change:   { _choices: ['progressed', 'regressed', 'removed', 'kept'] },
-                  dosage:   'string — sets x reps or time, if stated' }],
-      adherence_report: 'string — what the patient said about doing the home program',
-      pain_today:       'number — 0-10 as reported, or null',
-    }, (answers, forPatient, meta) => render(forPatient.id, answers, meta.version));
+    askAboutTheVisit(mine);
   });
+
+  let unsubscribe;
+  function askAboutTheVisit(mine) {
+    if (unsubscribe) unsubscribe();                              // questions are per patient
+    unsubscribe = comprehend.subscribe({
+      performed: {                                               // nest as deep as you like
+        _description: 'Only what was done or reviewed in the room today',   // context for a whole branch
+        'Sit-to-stand': { _type: 'boolean' },                    // yes / no
+        'Hip hinge':    { _type: 'boolean' },
+      },
+      pain_today: { _type: 'integer', _description: '0-10 as the patient reported it, or null' },
+      symptoms:   { _choices: ['pain', 'stiffness', 'swelling', 'giving way'], _multiple: true },   // pick any
+      plan:       { _choices: ['progress', 'hold', 'regress', 'discharge'] },                    // pick one
+      changes: [{                                                // a list — one row per change the PT stated
+        exercise: { _choices: mine.program },                    // from YOUR data — this is where answers get sharp
+        dosage:   'sets x reps or time, if stated',              // a plain string is a free-text answer
+      }],
+      patient_said: 'what the patient said about doing the home program',
+    }, (answers) => render(answers));
+  }
 </script>
 ```
 
@@ -79,7 +89,7 @@ comprehend.patient;                           // the current handle, or null
 
 ### Structures
 
-A structure is a nested object whose **shape is the answer shape**. Leaves are shorthand strings — `'boolean — was RTM discussed?'` — or objects with `_type` (`boolean | number | string | string[] | number[]`), `_description`, `_choices`, `_existingValue`. An array with one prototype row is a list, sized to what the transcript supports. Fill `_choices` from your own data — that's where the answers get sharp.
+A structure is a nested object whose **shape is the answer shape**. A plain string leaf is a free-text question. An object leaf constrains the answer: `_type` (`boolean | integer | number | string`), `_choices` (add `_multiple: true` for pick-any), `_description` — which also works on a branch, once, for context; `_existingValue` hints a prior value. An array with one prototype row is a list, sized to what the transcript supports. Fill `_choices` from your own data — that's where the answers get sharp.
 
 ### When we answer
 

@@ -336,8 +336,16 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 }</code></pre>
 
     <h3 style="margin:26px 0 6px">Give clinicians a button</h3>
-    <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens <em>Admin Settings → Apps</em> with your app already looked up for their admin — or tells a non-admin who to ask.</p>
+    <p class="fine">Link to <code>https://app.comprehendpt.com/User/apps?add=&lt;your launch URL&gt;</code>. Comprehend signs them in and opens <em>Admin Settings → Apps</em> with your app already looked up for their admin — or tells a non-admin who to ask. If your manifest isn't at <code>/.well-known/</code>, add <code>&amp;manifest=&lt;its URL&gt;</code> (same origin as the app).</p>
     <pre><code>&lt;a href="https://app.comprehendpt.com/User/apps?add=https%3A%2F%2Fapp.example.com%2Fcomprehend"&gt;Add to Comprehend&lt;/a&gt;</code></pre>
+
+    <h3 style="margin:26px 0 6px">Try it with the demo apps</h3>
+    <p class="fine">These are that button, wired to the two example apps. Click one while signed in to Comprehend as a clinic admin: you'll land on <em>Admin Settings → Apps</em> with the card already filled from the demo's manifest. Turn it on and it shows up in your Apps tab on the next visit you open. Both demos are fictional and use canned data — nothing leaves your browser except the visit answers Comprehend computes for them.</p>
+    <div class="row" id="demoButtons" style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 4px">
+      <a class="cta" data-demo="hep-rtm" href="#">Add Cadence (HEP / RTM) to Comprehend</a>
+      <a class="cta ghost" data-demo="force-plate" href="#">Add Forceline (force plate) to Comprehend</a>
+    </div>
+    <p class="fine" id="demoTarget"></p>
 
     <h3 style="margin:26px 0 6px">Requirements</h3>
     <ul class="fine">
@@ -386,6 +394,18 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     const el = document.getElementById('partnerCards');
     const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     try {
+      // Demo "Add to Comprehend" buttons: point at the Comprehend this page is served from (localhost → dev).
+      (function wireDemoButtons() {
+        const host = /^https:\/\/(app|dev)\.comprehendpt\.com$/.test(location.origin) ? location.origin : 'https://dev.comprehendpt.com';
+        document.querySelectorAll('#demoButtons a[data-demo]').forEach((a) => {
+          const slug = a.getAttribute('data-demo');
+          const launch = `${host}/vendor-examples/${slug}.html`;
+          const manifest = `${host}/vendor-examples/.well-known/${slug}.json`;
+          a.href = `${host}/User/apps?add=${encodeURIComponent(launch)}&manifest=${encodeURIComponent(manifest)}`;
+        });
+        const t = document.getElementById('demoTarget');
+        if (t) t.textContent = `Adds to ${host.replace('https://', '')}.`;
+      })();
       const rsp = await fetch('./partners.json', { cache: 'no-cache' });
       const json = await rsp.json();
       const list = (json.partners || []).filter((p) => p && p.name && /^https:/.test(p.launchUrl || ''));

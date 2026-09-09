@@ -73,6 +73,7 @@
   <div class="logo"><svg viewBox="0 0 64 64" fill="none"><rect x="10" y="42" width="44" height="8" rx="2" fill="#fff" opacity=".9"/><path d="M32 38V14m0 0-8 8m8-8 8 8" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <b>Forceline</b><small>Force plate testing · return to sport</small>
   <span class="chip" id="chip"><span class="dot"></span><span id="chipText">Not connected to Comprehend</span></span>
+  <a id="addToComprehend" class="chip" style="display:none;margin-left:8px;text-decoration:none;cursor:pointer" title="What a vendor puts on their own site: opens Admin Settings → Apps in Comprehend with this app looked up">+ Add to Comprehend</a>
 </nav>
 <main>
   <aside><h4>Athletes &amp; patients</h4><div id="roster"></div></aside>
@@ -196,6 +197,13 @@ ${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}
       log(`answers ← v${meta.version} for ${forPatient.name || forPatient.id}`); render();
     });
     log(`subscribe → ${p.tests.length} test booleans for ${p.name}`);
+  }
+  // When opened as a page (not inside Comprehend's frame), show the vendor-site button for real.
+  if (window.top === window) {
+    const host = /^https:\/\/(app|dev)\.comprehendpt\.com$/.test(location.origin) ? location.origin : 'https://dev.comprehendpt.com';
+    const a = $('addToComprehend');
+    a.href = `${host}/User/apps?add=${encodeURIComponent(`${host}/vendor-examples/force-plate.html`)}&manifest=${encodeURIComponent(`${host}/vendor-examples/.well-known/force-plate.json`)}`;
+    a.style.display = 'inline-flex';
   }
   render();
 </script>

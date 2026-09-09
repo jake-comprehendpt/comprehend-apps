@@ -80,6 +80,7 @@
   <div class="logo"><svg viewBox="0 0 64 64" fill="none"><path d="M12 40c6-16 10-16 16-4s10 12 16-4" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg></div>
   <b>Cadence</b><small>Home Exercise · Remote Therapeutic Monitoring</small>
   <span class="chip" id="chip"><span class="dot"></span><span id="chipText">Not connected to Comprehend</span></span>
+  <a id="addToComprehend" class="chip" style="display:none;margin-left:8px;text-decoration:none;cursor:pointer" title="What a vendor puts on their own site: opens Admin Settings → Apps in Comprehend with this app looked up">+ Add to Comprehend</a>
 </nav>
 <main>
   <aside>
@@ -235,6 +236,13 @@ ${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name });
       render();
     });
     log(`subscribe → ${p.program.length} exercise booleans + changes list for ${p.name}`);
+  }
+  // When opened as a page (not inside Comprehend's frame), show the vendor-site button for real.
+  if (window.top === window) {
+    const host = /^https:\/\/(app|dev)\.comprehendpt\.com$/.test(location.origin) ? location.origin : 'https://dev.comprehendpt.com';
+    const a = $('addToComprehend');
+    a.href = `${host}/User/apps?add=${encodeURIComponent(`${host}/vendor-examples/hep-rtm.html`)}&manifest=${encodeURIComponent(`${host}/vendor-examples/.well-known/hep-rtm.json`)}`;
+    a.style.display = 'inline-flex';
   }
   render();
 </script>

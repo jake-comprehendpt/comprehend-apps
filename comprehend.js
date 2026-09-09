@@ -250,6 +250,28 @@
 
   global.comprehend = comprehend;
 
+  // Report our content height whenever it changes, so the host can size the
+  // frame to fit and the clinician scrolls one page, not a frame inside a page.
+  // Automatic — nothing for the vendor to call. Keep your page's natural height
+  // (no fixed-height body with its own scroll) and this just works.
+  (function reportHeight() {
+    if (global.top === global) return;
+    var last = 0, pending = null;
+    function measure() {
+      pending = null;
+      var d = global.document, h = Math.max(d.documentElement ? d.documentElement.scrollHeight : 0, d.body ? d.body.scrollHeight : 0);
+      if (h > 0 && h !== last) { last = h; global.parent.postMessage({ type: 'comprehend:height', height: h }, HOST_ORIGIN); }
+    }
+    function schedule() { if (!pending) pending = setTimeout(measure, 50); }
+    if (global.ResizeObserver && global.document.documentElement) {
+      new global.ResizeObserver(schedule).observe(global.document.documentElement);
+      if (global.document.body) new global.ResizeObserver(schedule).observe(global.document.body);
+    }
+    global.addEventListener('load', schedule);
+    setInterval(schedule, 1000);   // catches content that changes without resizing the root (fonts, images)
+    schedule();
+  })();
+
   // Say hello. The host answers with comprehend:patient (reason 'ready'), so the
   // first patient event arrives whether this script ran before the frame's load
   // event, was injected later by a framework, or the page is a slow SPA. Sent

@@ -21,7 +21,8 @@
   button.primary { background:var(--brand); color:#fff; border-color:var(--brand); }
   button.on { background:#ecfdf5; border-color:var(--brand); color:var(--brand); }
   button:disabled { opacity:.5; cursor:default; }
-  .frame { height: 56vh; min-height: 380px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }
+  .frame iframe { display:block; width:100%; height:56vh; border:0; transition: height .15s ease-out; }
+  .frame { min-height: 380px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }   /* grows with the app's reported height — one scroll, the page's */
   iframe { width:100%; height:100%; border:0; }
   .status { font-size:12px; color:var(--muted); margin-top:6px; }
   .status.bad { color:var(--bad); } .status.ok { color:var(--ok); }
@@ -355,6 +356,7 @@
         renderSubs(); evaluate('subscribe', msg.id); break;
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
+      case 'comprehend:height': { const h = Math.min(Math.max(Math.round(Number(msg.height) || 0), 240), 8000); if (h && frame.style.height !== h + 'px') { frame.style.height = h + 'px'; } break; }
       case 'comprehend:hello': log('in', `hello · comprehend.js v${msg.version} initialised — sending patient(ready)`); if (state.origin) sendPatient('ready'); break;
       case 'comprehend:ack': log('in', `ack · comprehend.js v${msg.version} loaded in ${msg.href || 'your page'}`); break;
     }

@@ -2,36 +2,71 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Example vendor app — HEP / RTM</title>
+<title>Cadence — Home Exercise &amp; RTM (example Comprehend app)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 0; color: #1f2937; background: #f8fafc; }
-  header { background: #0f766e; color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
-  header b { font-size: 15px; } header small { opacity: .85; }
-  main { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px; }
-  .roster button { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 6px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
-  .roster button.active { border-color: #0f766e; background: #ecfdf5; }
-  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
-  .card h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #e5e7eb; }
-  .pill.ok { background: #d1fae5; color: #065f46; } .pill.warn { background: #fee2e2; color: #991b1b; }
-  table { border-collapse: collapse; width: 100%; font-size: 13px; } td, th { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
-  td.yes { color: #065f46; font-weight: 600; } td.no { color: #9ca3af; }
-  pre { background: #f3f4f6; padding: 8px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; margin: 0; }
-  .log div { font-family: ui-monospace, monospace; font-size: 11px; color: #4b5563; }
+  :root { --brand: #0f766e; --brand-soft: #ecfdf5; --ink: #0f172a; --muted: #64748b; --line: #e5e7eb; --bg: #f6f8fa; --warn: #b45309; --warn-soft: #fffbeb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  nav { height: 52px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 18px; gap: 12px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); display: grid; place-items: center; }
+  .logo svg { width: 18px; height: 18px; }
+  nav b { font-size: 16px; letter-spacing: -.01em; } nav small { color: var(--muted); }
+  .chip { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--muted); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+  .chip.on { border-color: #a7f3d0; background: var(--brand-soft); color: #065f46; } .chip.on .dot { background: #10b981; }
+  .chip.err { border-color: #fecaca; background: #fef2f2; color: #991b1b; } .chip.err .dot { background: #ef4444; }
+  main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 52px); }
+  aside { background: #fff; border-right: 1px solid var(--line); padding: 14px 10px; }
+  aside h4 { margin: 4px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .pt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 8px; border: 0; background: none; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; }
+  .pt:hover { background: #f1f5f9; } .pt.active { background: var(--brand-soft); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: #334155; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none; }
+  .pt .meta { font-size: 11px; color: var(--muted); }
+  .pt .adh { margin-left: auto; font-weight: 700; font-size: 12px; } .adh.low { color: #dc2626; } .adh.ok { color: #059669; }
+  section { padding: 18px 22px 40px; max-width: 1080px; }
+  .head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 14px; }
+  .head h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; } .head .sub { color: var(--muted); font-size: 13px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .tile { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .tile b { display: block; font-size: 22px; margin-top: 4px; } .tile .trend { font-size: 12px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+  .card h3 { margin: 0; padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  .card h3 .tag { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; } tr:last-child td { border-bottom: 0; }
+  .dose { color: var(--muted); font-size: 12px; }
+  .week { display: inline-flex; gap: 3px; } .week i { width: 9px; height: 9px; border-radius: 2px; background: #e2e8f0; display: block; } .week i.d { background: var(--brand); }
+  .flag { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; margin: 10px 14px; }
+  .visit { padding: 12px 14px; }
+  .visit .empty { color: var(--muted); font-size: 13px; padding: 10px 0 4px; }
+  .visit .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+  .visit .row:last-child { border-bottom: 0; }
+  .mark { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+  .mark.yes { background: #d1fae5; color: #065f46; } .mark.no { background: #f1f5f9; color: #94a3b8; } .mark.na { background: #f1f5f9; color: #cbd5e1; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 13px; margin-top: 10px; } .kv span { color: var(--muted); }
+  .change { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin: 2px 4px 2px 0; }
+  details.dev { margin-top: 18px; font-size: 12px; color: var(--muted); }
+  details.dev summary { cursor: pointer; } details.dev pre { background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px; max-height: 200px; overflow: auto; font-size: 11px; }
 </style>
 </head>
 <body>
-<header><b>Example HEP app</b><small id="link">not connected to Comprehend</small></header>
+<nav>
+  <div class="logo"><svg viewBox="0 0 64 64" fill="none"><path d="M12 40c6-16 10-16 16-4s10 12 16-4" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg></div>
+  <b>Cadence</b><small>Home Exercise · Remote Therapeutic Monitoring</small>
+  <span class="chip" id="chip"><span class="dot"></span><span id="chipText">Not connected to Comprehend</span></span>
+</nav>
 <main>
-  <aside class="roster" id="roster"></aside>
+  <aside>
+    <h4>Patients</h4>
+    <div id="roster"></div>
+  </aside>
   <section>
-    <div class="card"><h3>Home program — last 7 days</h3><div id="summary"></div></div>
-    <div class="card">
-      <h3>From today's visit <span class="pill" id="pushState">waiting for Comprehend</span></h3>
-      <div id="answers">—</div>
-    </div>
-    <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
+    <div id="content"></div>
+    <details class="dev"><summary>Developer · Comprehend bridge log</summary><pre id="log"></pre></details>
   </section>
 </main>
 
@@ -39,92 +74,120 @@
      The manifest this app would publish at /.well-known/comprehend-app.json: ./.well-known/hep-rtm.json -->
 <script src="../comprehend.js"></script>
 <script>
-  // ---- the vendor's own world: a roster, each patient's program, adherence -------------
+  // ---- Cadence's own world: a roster, each patient's program, adherence ------------------
   const ROSTER = [
-    { id: 'L-1001', name: 'Ann Kim',     adherence: '5/7', pain: '6 → 3', flagged: 'skipped hip hinge ×3 (reports knee pain)',
-      program: ['Sit-to-stand', 'Hip hinge', 'Step-ups', 'Glute bridge'] },
-    { id: 'L-1002', name: 'Bob Smith',   adherence: '2/7', pain: '4 → 5', flagged: 'no sessions since Tuesday',
-      program: ['Heel raises', 'Single-leg balance', 'Ankle alphabet'] },
-    { id: 'L-1003', name: 'Kate Nguyen', adherence: '7/7', pain: '2 → 1', flagged: 'none',
-      program: ['Bird dog', 'Dead bug', 'Cat-camel'] },
+    { id: 'C-1001', name: 'Ann Kim', dob: '1968-03-14', dx: 'R knee OA · post TKA wk 6', pt: 'M. Alvarez, PT', start: 'Aug 4', adherence: 71, sessions: 5, pain: [6, 5, 5, 4, 4, 3, 3], rtm: 14,
+      flagged: 'Skipped Hip hinge 3× this week — reports knee pain during the movement.',
+      program: [
+        { name: 'Sit-to-stand',        dose: '3 × 12',        week: [1,1,0,1,1,1,0] },
+        { name: 'Hip hinge',           dose: '3 × 10',        week: [1,0,0,1,0,0,0] },
+        { name: 'Step-ups',            dose: '2 × 10 each',   week: [1,1,1,1,1,0,0] },
+        { name: 'Glute bridge',        dose: '3 × 15',        week: [1,1,1,1,1,1,0] } ] },
+    { id: 'C-1002', name: 'Bob Smith', dob: '1979-11-02', dx: 'L Achilles tendinopathy', pt: 'M. Alvarez, PT', start: 'Aug 18', adherence: 29, sessions: 2, pain: [4, 4, 5, 5, 5, 5, 5], rtm: 6,
+      flagged: 'No sessions logged since Tuesday.',
+      program: [
+        { name: 'Heel raises',         dose: '3 × 15, slow', week: [1,1,0,0,0,0,0] },
+        { name: 'Single-leg balance',  dose: '3 × 30 s',      week: [1,0,0,0,0,0,0] },
+        { name: 'Ankle alphabet',      dose: '2 sets',        week: [1,1,0,0,0,0,0] } ] },
+    { id: 'C-1003', name: 'Kate Nguyen', dob: '1991-07-22', dx: 'Non-specific LBP', pt: 'J. Ortiz, DPT', start: 'Jul 21', adherence: 100, sessions: 7, pain: [2, 2, 2, 1, 1, 1, 1], rtm: 22,
+      flagged: '',
+      program: [
+        { name: 'Bird dog',            dose: '3 × 8 each',    week: [1,1,1,1,1,1,1] },
+        { name: 'Dead bug',            dose: '3 × 10',        week: [1,1,1,1,1,1,1] },
+        { name: 'Cat-camel',           dose: '2 × 10',        week: [1,1,1,1,1,1,1] } ] },
   ];
-  let current = null;
-  let unsubscribe = null;
-
+  let current = null, unsubscribe = null, latest = null;   // latest = last answers from Comprehend, per patient id
   const $ = (id) => document.getElementById(id);
-  const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
+  const log = (m) => { $('log').textContent = `${new Date().toLocaleTimeString()}  ${m}\n` + $('log').textContent; };
+  const initials = (n) => n.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  const age = (dob) => Math.floor((Date.now() - new Date(dob)) / 3.15576e10);
 
-  function render() {
-    $('roster').innerHTML = ROSTER.map(p =>
-      `<button class="${current && current.id === p.id ? 'active' : ''}" data-id="${p.id}">${p.name}<br><small>${p.id}</small></button>`).join('');
-    $('summary').innerHTML = current
-      ? `<div><b>${current.name}</b> · adherence ${current.adherence} · pain ${current.pain}<br>Flagged: ${current.flagged}<br>Program: ${current.program.join(', ')}</div>`
-      : '<em>Select a patient</em>';
-    const ours = comprehend.patient;
-    $('link').textContent = !comprehend.ready ? 'not connected to Comprehend'
-      : !ours ? 'Comprehend: no chart open'
-      : `Comprehend: ${ours.name}${ours.yourId ? ' · linked ' + ours.yourId : ''}`;
+  function renderRoster() {
+    $('roster').innerHTML = ROSTER.map((p) => `
+      <button class="pt ${current && current.id === p.id ? 'active' : ''}" data-id="${p.id}">
+        <span class="avatar">${initials(p.name)}</span>
+        <span><div>${p.name}</div><div class="meta">${p.dx}</div></span>
+        <span class="adh ${p.adherence < 50 ? 'low' : 'ok'}">${p.adherence}%</span>
+      </button>`).join('');
   }
-  $('roster').addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    current = ROSTER.find(p => p.id === b.dataset.id); render(); sync(comprehend.patient);
-  });
+  function renderChip() {
+    const ours = comprehend.patient, chip = $('chip');
+    if (!comprehend.ready) { chip.className = 'chip'; $('chipText').textContent = 'Not connected to Comprehend'; return; }
+    if (!ours) { chip.className = 'chip'; $('chipText').textContent = 'Comprehend · no chart open'; return; }
+    chip.className = 'chip on'; $('chipText').textContent = `Comprehend · ${ours.name}${ours.yourId ? ' · linked' : ''}`;
+  }
+  function renderVisit(p) {
+    const a = latest && latest.patientId === (comprehend.patient && comprehend.patient.id) ? latest.answers : null;
+    if (!a) return `<div class="empty">Comprehend fills this in from today's visit when the note is generated — which exercises were performed or reviewed, what changed, and what ${p.name.split(' ')[0]} said about the program.</div>`;
+    const rows = p.program.map((ex) => { const v = a.performed ? a.performed[ex.name] : null;
+      return `<div class="row"><span class="mark ${v === true ? 'yes' : v === false ? 'no' : 'na'}">${v === true ? '✓' : v === false ? '–' : '·'}</span>${ex.name}<span style="margin-left:auto;color:var(--muted);font-size:12px">${v === true ? 'performed / reviewed' : v === false ? 'not today' : '—'}</span></div>`; }).join('');
+    const changes = (a.changes || []).map((c) => `<span class="change">${c.exercise || '?'} · ${c.change || ''}${c.dosage ? ' · ' + c.dosage : ''}</span>`).join('') || '<span style="color:var(--muted)">none stated</span>';
+    return `${rows}<div class="kv"><span>Changes</span><div>${changes}</div><span>Patient reported</span><div>${a.adherence_report || '—'}</div><span>Pain today</span><div>${a.pain_today ?? '—'}${a.pain_today != null ? ' / 10' : ''}</div></div>`;
+  }
+  function render() {
+    renderRoster(); renderChip();
+    if (!current) { $('content').innerHTML = '<p style="color:var(--muted)">Select a patient.</p>'; return; }
+    const p = current, last = p.pain[p.pain.length - 1], first = p.pain[0];
+    $('content').innerHTML = `
+      <div class="head"><h1>${p.name}</h1><div class="sub">${age(p.dob)} y · DOB ${p.dob} · ${p.dx} · ${p.pt} · program since ${p.start}</div></div>
+      <div class="tiles">
+        <div class="tile"><small>Adherence · 7 days</small><b>${p.adherence}%</b><span class="trend">${p.sessions} of 7 sessions</span></div>
+        <div class="tile"><small>Pain · self-reported</small><b>${last} <span style="font-size:13px;color:var(--muted)">/ 10</span></b><span class="trend">${first} → ${last} this week</span></div>
+        <div class="tile"><small>RTM minutes · month</small><b>${p.rtm} <span style="font-size:13px;color:var(--muted)">/ 20</span></b><span class="trend">${p.rtm >= 20 ? '98977 threshold met' : `${20 - p.rtm} to 98977 threshold`}</span></div>
+        <div class="tile"><small>Next check-in</small><b>Today</b><span class="trend">in-clinic visit</span></div>
+      </div>
+      <div class="grid">
+        <div class="card"><h3>Home program <span class="tag">last 7 days</span></h3>
+          <table><thead><tr><th>Exercise</th><th>Dose</th><th>Week</th><th>Done</th></tr></thead><tbody>
+          ${p.program.map((ex) => `<tr><td>${ex.name}</td><td class="dose">${ex.dose}</td><td><span class="week">${ex.week.map((d) => `<i class="${d ? 'd' : ''}"></i>`).join('')}</span></td><td>${ex.week.filter(Boolean).length}/7</td></tr>`).join('')}
+          </tbody></table>
+          ${p.flagged ? `<div class="flag">⚑ ${p.flagged}</div>` : ''}
+        </div>
+        <div class="card"><h3>In-clinic today <span class="tag">from Comprehend</span></h3><div class="visit">${renderVisit(p)}</div></div>
+      </div>`;
+  }
+  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); render(); sync(comprehend.patient); });
 
-  // ---- EVENTS: one handler. reason = 'ready' | 'changed' | 'refresh' ---------------------
+  // ---- Comprehend: one event, then per-patient context + questions ---------------------------
   const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
-  const byName = (name) => ROSTER.find(p => nameKey(p.name) === nameKey(name)) || null;
+  const byName = (name) => ROSTER.find((p) => nameKey(p.name) === nameKey(name)) || null;
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
-    if (patient && patient.yourId) {                          // linked before → open our chart, zero clicks
-      const mine = ROSTER.find(p => p.id === patient.yourId); if (mine) current = mine;
-    } else if (patient && !current) {                          // not linked yet → prefill by name (the clinician can still change it)
-      current = byName(patient.name);
-    }
-    render();
-    sync(patient);
+    if (patient && patient.yourId) { current = ROSTER.find((p) => p.id === patient.yourId) || current; }   // linked before: zero clicks
+    else if (patient && !current) { current = byName(patient.name); }                                       // not linked yet: prefill by name
+    render(); sync(patient);
   });
-  comprehend.on('error', ({ code }) => {
-    $('pushState').textContent = code; $('pushState').className = 'pill warn';
-    log(`error ← ${code}`);   // no names, no details: the clinician sees those in Comprehend
-  });
+  comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
-  // ---- CONTENT + QUESTIONS, both per patient ----------------------------------------------
   function sync(patient) {
     if (!patient || !current) return;
-
-    // 1. Tell Comprehend what we know about the patient WE have open. This is also the link.
-    patient.setContext(`## Home program — last 7 days for ${current.name}
-- Adherence: ${current.adherence} sessions
-- Pain trend (self-reported): ${current.pain}
-- Flagged: ${current.flagged}
-- Program: ${current.program.join(', ')}`, { id: current.id, name: current.name });
-    log(`setContext → ${patient.id} as "${current.name}" (${current.id})`);
-
-    // 2. Ask about THIS patient's program. Rebuilt on every patient event — the
-    //    questions are only useful if they're about the exercises this patient has.
+    const p = current;
+    // 1. Context: what Cadence knows about the patient we have open. This call is also the link.
+    patient.setContext(`## Cadence — home program, last 7 days
+- Adherence: ${p.adherence}% (${p.sessions}/7 sessions)
+- Pain (self-reported): ${p.pain[0]} → ${p.pain[p.pain.length - 1]}
+- RTM minutes this month: ${p.rtm}
+- Program: ${p.program.map((e) => `${e.name} ${e.dose}`).join('; ')}
+${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name });
+    log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
+    // 2. Questions built from THIS patient's program.
     if (unsubscribe) unsubscribe();
     const performed = {};
-    for (const ex of current.program) performed[ex] = `boolean — was "${ex}" performed or reviewed in today's visit?`;
+    for (const ex of p.program) performed[ex.name] = `boolean — was "${ex.name}" performed or reviewed in today's visit?`;
     unsubscribe = comprehend.subscribe({
-      performed,                                                              // one boolean per prescribed exercise
-      changes: [{ exercise: { _choices: current.program.concat(['(new exercise)']) },
+      performed,
+      changes: [{ exercise: { _choices: p.program.map((e) => e.name).concat(['(new exercise)']) },
                   change:   { _choices: ['progressed', 'regressed', 'removed', 'added', 'kept'] },
                   dosage:   { _description: 'sets x reps or time, if the PT stated one' } }],
       adherence_report: 'string — what the patient said about doing the home program',
       pain_today:       'number — pain reported today, 0-10, or null',
     }, (answers, forPatient, meta) => {
-      if (comprehend.patient && comprehend.patient.id !== forPatient.id) { log(`stale answers for ${forPatient.id} ignored`); return; }
-      $('pushState').textContent = `v${meta.version}${meta.partial ? ' (partial)' : ''}`; $('pushState').className = 'pill ok';
-      const rows = Object.entries(answers.performed || {}).map(([ex, done]) =>
-        `<tr><td>${ex}</td><td class="${done ? 'yes' : 'no'}">${done === null ? '—' : done ? 'performed' : 'not today'}</td></tr>`).join('');
-      $('answers').innerHTML = `<table><tr><th>Exercise</th><th>Today</th></tr>${rows}</table>
-        <p style="margin:8px 0 0;font-size:13px"><b>Adherence:</b> ${answers.adherence_report ?? '—'} · <b>Pain today:</b> ${answers.pain_today ?? '—'}</p>
-        <pre style="margin-top:8px">${JSON.stringify(answers.changes || [], null, 1)}</pre>`;
-      log(`answers ← v${meta.version} for ${forPatient.name || forPatient.id}`);
+      latest = { patientId: forPatient.id, answers };
+      log(`answers ← v${meta.version}${meta.partial ? ' (partial)' : ''} for ${forPatient.name || forPatient.id}`);
+      render();
     });
-    log(`subscribe → ${current.program.length} exercise booleans + changes list for ${current.name}`);
+    log(`subscribe → ${p.program.length} exercise booleans + changes list for ${p.name}`);
   }
-
   render();
 </script>
 </body>

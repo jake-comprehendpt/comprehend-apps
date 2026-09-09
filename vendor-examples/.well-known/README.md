@@ -17,7 +17,9 @@ shape filled in with real values:
 - [`force-plate.json`](force-plate.json) — for [`../force-plate.html`](../force-plate.html)
 
 Copy one, rename it `comprehend-app.json`, put it at the root of your origin under
-`/.well-known/`, and change the values. Rules the resolver enforces:
+`/.well-known/`, and change the values. (If you cannot serve that path, the admin can paste a
+link to the manifest itself, or type its URL under *Advanced* when adding your app — it still
+has to live on your origin.) Rules the resolver enforces:
 
 | key | rule |
 |---|---|
@@ -25,6 +27,7 @@ Copy one, rename it `comprehend-app.json`, put it at the root of your origin und
 | `launchUrl` | `https`, **same origin as the manifest**; the page we open in the Apps tab |
 | `description` | up to 200 characters, one sentence a clinic admin understands |
 | `icon` | `https` URL, square, 64px or larger |
+| `color` | brand colour as `#rrggbb`; used for the app's pill and accents inside Comprehend |
 | `docs` | `https` URL of your Comprehend integration page |
 | `baaContact` | e-mail or URL where a clinic gets your Business Associate Agreement |
 | `categories` | up to 5 short tags, e.g. `hep`, `rtm`, `sensor`, `outcomes` |

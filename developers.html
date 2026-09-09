@@ -292,17 +292,18 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <h2>Start building</h2>
     <div class="cols">
       <div class="card"><h3>1 · Sandbox</h3><p>A fake Comprehend around your real app: two fake patients, canned encounters, mock answers in the shape you asked for, a server-side check that both our origins can frame you, and a log of every message across the frame. Point it at <code>localhost</code>. <a href="./vendor-sandbox.html">Open →</a></p></div>
-      <div class="card"><h3>2 · Examples</h3><p>Two small pages that exercise the whole contract: a <a href="./vendor-examples/hep-rtm.html">home-exercise / RTM app</a> (per-patient subscriptions built from each patient's program) and a <a href="./vendor-examples/force-plate.html">force-plate app</a>. View source; copy freely.</p></div>
+      <div class="card"><h3>2 · Examples</h3><p>Two small pages that exercise the whole contract: a <a href="./vendor-examples/hep-rtm.html">home-exercise / RTM app</a> ("Cadence" — per-patient subscriptions built from each patient's program) and a <a href="./vendor-examples/force-plate.html">force-plate app</a> ("Forceline"). Both are fictional products with a real product UI; the Comprehend integration is the "In-clinic today" card. View source; copy freely.</p></div>
       <div class="card"><h3>3 · Go live with a clinic</h3><p>When a clinic wants you, their admin pastes <em>any link to your app</em> under <em>Admin Settings → Apps</em>. We read your <a href="#manifest">manifest</a>, show them your name, description and BAA contact, check we can embed you, and they confirm the BAA and turn you on. Every clinician in that group sees you in their Apps tab.</p></div>
     </div>
 
     <h3 id="manifest" style="margin:26px 0 6px">Describe your app once — the manifest</h3>
-    <p class="fine">Host a small JSON file at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code>. It is what a clinic admin sees when they paste your link: no fields to fill in, no origins to type. Every key is optional; without the file we show your hostname as the name and use the pasted link as-is. <code>launchUrl</code> must be on the same origin as the manifest. The sandbox's <em>Check my app</em> shows you exactly what admins will see. Filled-in examples: <a href="./vendor-examples/.well-known/hep-rtm.json">hep-rtm.json</a>, <a href="./vendor-examples/.well-known/force-plate.json">force-plate.json</a> (<a href="https://github.com/jake-comprehendpt/comprehend-apps/tree/main/vendor-examples/.well-known">why they aren't at the root</a>).</p>
+    <p class="fine">Host a small JSON file at <code>https://&lt;your origin&gt;/.well-known/comprehend-app.json</code>. It is what a clinic admin sees when they paste your link: no fields to fill in, no origins to type. Every key is optional; without the file we show your hostname as the name and use the pasted link as-is. <code>launchUrl</code> must be on the same origin as the manifest. Can't serve <code>/.well-known/</code>? Give the clinic a link to the manifest itself — a pasted link ending in <code>.json</code> is read as the manifest — or they can type its URL under <em>Advanced</em>. The sandbox's <em>Check my app</em> shows you exactly what admins will see. Filled-in examples: <a href="./vendor-examples/.well-known/hep-rtm.json">hep-rtm.json</a>, <a href="./vendor-examples/.well-known/force-plate.json">force-plate.json</a> (<a href="https://github.com/jake-comprehendpt/comprehend-apps/tree/main/vendor-examples/.well-known">why they aren't at the root</a>).</p>
     <pre><code>{
   "name": "Your app",
   "launchUrl": "https://your-app.example/comprehend",
   "description": "One sentence a clinic admin understands.",
   "icon": "https://your-app.example/icon-128.png",
+  "color": "#0f766e",
   "docs": "https://your-app.example/comprehend",
   "baaContact": "privacy@your-app.example",
   "categories": ["hep", "rtm"]

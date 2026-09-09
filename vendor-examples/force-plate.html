@@ -2,34 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Example vendor app — Force plate</title>
+<title>Forceline — Force Plate Testing (example Comprehend app)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 0; color: #111827; background: #0b1220; }
-  header { background: #111a2e; color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #1f2a44; }
-  header small { opacity: .8; }
-  main { display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 16px; color: #e5e7eb; }
-  select { width: 100%; padding: 8px; background: #111a2e; color: #fff; border: 1px solid #334155; border-radius: 6px; }
-  .card { background: #111a2e; border: 1px solid #1f2a44; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
-  .card h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
-  .metric { display: inline-block; min-width: 120px; margin: 4px 12px 4px 0; }
-  .metric b { display: block; font-size: 20px; }
-  .metric.bad b { color: #f87171; }
-  pre { background: #0b1220; padding: 8px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; margin: 0; color: #a7f3d0; }
-  .log div { font-family: ui-monospace, monospace; font-size: 11px; color: #94a3b8; }
+  :root { --brand: #6366f1; --brand-soft: rgba(99,102,241,.18); --bg: #0b1020; --panel: #111a2e; --line: #1f2a44; --ink: #e5e7eb; --muted: #8b95a7; --good: #34d399; --bad: #f87171; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  nav { height: 52px; background: #0d1426; border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 18px; gap: 12px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); display: grid; place-items: center; } .logo svg { width: 18px; height: 18px; }
+  nav b { font-size: 16px; } nav small { color: var(--muted); }
+  .chip { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
+  .chip.on { border-color: rgba(52,211,153,.4); color: #a7f3d0; } .chip.on .dot { background: var(--good); }
+  .chip.err { border-color: rgba(248,113,113,.4); color: #fecaca; } .chip.err .dot { background: var(--bad); }
+  main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 52px); }
+  aside { background: #0d1426; border-right: 1px solid var(--line); padding: 14px 10px; }
+  aside h4 { margin: 4px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .pt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 8px; border: 0; background: none; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; }
+  .pt:hover { background: #131c33; } .pt.active { background: var(--brand-soft); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #1e293b; color: #cbd5e1; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none; }
+  .pt .meta { font-size: 11px; color: var(--muted); }
+  section { padding: 18px 22px 40px; max-width: 1080px; }
+  .head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 14px; } .head h1 { margin: 0; font-size: 22px; } .head .sub { color: var(--muted); font-size: 13px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .tile b { display: block; font-size: 22px; margin-top: 4px; } .tile .trend { font-size: 12px; color: var(--muted); } .tile.bad b { color: var(--bad); }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .card h3 { margin: 0; padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; } .card h3 .tag { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); }
+  .asym { padding: 14px; } .asym .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .bar { position: relative; height: 14px; background: #1e293b; border-radius: 7px; overflow: hidden; } .bar i { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #475569; }
+  .bar b { position: absolute; top: 0; bottom: 0; background: var(--brand); border-radius: 7px; } .bar b.bad { background: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 14px; border-bottom: 1px solid #16203a; } tr:last-child td { border-bottom: 0; } td.n { font-variant-numeric: tabular-nums; }
+  .pill { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #1e293b; color: #cbd5e1; } .pill.bad { background: rgba(248,113,113,.15); color: #fecaca; } .pill.good { background: rgba(52,211,153,.15); color: #a7f3d0; }
+  .visit { padding: 12px 14px; } .visit .empty { color: var(--muted); font-size: 13px; padding: 10px 0 4px; }
+  .visit .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #16203a; font-size: 13px; } .visit .row:last-child { border-bottom: 0; }
+  .mark { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; background: #1e293b; color: #64748b; }
+  .mark.yes { background: rgba(52,211,153,.2); color: var(--good); }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 10px; font-size: 13px; margin-top: 10px; } .kv span { color: var(--muted); }
+  .note { margin: 0 14px 14px; padding: 8px 12px; border-radius: 8px; background: #0f172a; color: #cbd5e1; font-size: 12.5px; }
+  details.dev { margin-top: 18px; font-size: 12px; color: var(--muted); } details.dev summary { cursor: pointer; }
+  details.dev pre { background: #05080f; color: #94a3b8; border-radius: 8px; padding: 10px; max-height: 200px; overflow: auto; font-size: 11px; }
 </style>
 </head>
 <body>
-<header><b>Example Force Plate</b><small id="link">not connected to Comprehend</small></header>
+<nav>
+  <div class="logo"><svg viewBox="0 0 64 64" fill="none"><rect x="10" y="42" width="44" height="8" rx="2" fill="#fff" opacity=".9"/><path d="M32 38V14m0 0-8 8m8-8 8 8" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <b>Forceline</b><small>Force plate testing · return to sport</small>
+  <span class="chip" id="chip"><span class="dot"></span><span id="chipText">Not connected to Comprehend</span></span>
+</nav>
 <main>
-  <aside>
-    <label>Athlete / patient<br><select id="pick"><option value="">—</option></select></label>
-    <p style="font-size:12px;color:#94a3b8;margin-top:12px">Pick the same patient Comprehend has open. Your first <code>setContext</code> links the two ids; next visit this selects itself.</p>
-  </aside>
+  <aside><h4>Athletes &amp; patients</h4><div id="roster"></div></aside>
   <section>
-    <div class="card"><h3>Latest test</h3><div id="metrics">—</div></div>
-    <div class="card"><h3>From today's visit</h3><pre id="answers">waiting for Comprehend…</pre></div>
-    <div class="card log"><h3>Bridge log</h3><div id="log"></div></div>
+    <div id="content"></div>
+    <details class="dev"><summary>Developer · Comprehend bridge log</summary><pre id="log"></pre></details>
   </section>
 </main>
 
@@ -38,61 +67,93 @@
 <script src="../comprehend.js"></script>
 <script>
   const ROSTER = [
-    { id: 'V-77', name: 'Kim, Ann',      tests: ['CMJ', 'Single-leg hop L', 'Single-leg hop R'], date: '2026-09-04', jump: 31.2, asym: 14, note: 'L quad deficit' },
-    { id: 'V-78', name: 'Smith, Robert', tests: ['CMJ', 'Isometric mid-thigh pull'],              date: '2026-09-05', jump: 27.9, asym: 6,  note: 'within normal' },
+    { id: 'F-77', name: 'Kim, Ann', dob: '1968-03-14', dx: 'R TKA · wk 6', side: 'R', latest: '2026-09-04',
+      tests: [ { name: 'CMJ', unit: 'cm', value: 31.2, asym: -14, note: 'L quad deficit; landing stiff' },
+               { name: 'Single-leg hop L', unit: 'cm', value: 88, asym: null }, { name: 'Single-leg hop R', unit: 'cm', value: 104, asym: null } ],
+      history: [ ['2026-09-04', 'CMJ', '31.2 cm', -14], ['2026-08-21', 'CMJ', '28.9 cm', -19], ['2026-08-07', 'CMJ', '26.1 cm', -24] ] },
+    { id: 'F-78', name: 'Smith, Robert', dob: '1979-11-02', dx: 'L Achilles tendinopathy', side: 'L', latest: '2026-09-05',
+      tests: [ { name: 'CMJ', unit: 'cm', value: 27.9, asym: 6, note: 'within normal' }, { name: 'Isometric mid-thigh pull', unit: 'N', value: 2140, asym: 4 } ],
+      history: [ ['2026-09-05', 'CMJ', '27.9 cm', 6], ['2026-08-22', 'CMJ', '27.1 cm', 9] ] },
   ];
-  let current = null, unsubscribe = null;
+  let current = null, unsubscribe = null, latest = null;
   const $ = (id) => document.getElementById(id);
-  const log = (m) => { const d = document.createElement('div'); d.textContent = `${new Date().toLocaleTimeString()} ${m}`; $('log').prepend(d); };
+  const log = (m) => { $('log').textContent = `${new Date().toLocaleTimeString()}  ${m}\n` + $('log').textContent; };
+  const initials = (n) => n.replace(',', '').split(' ').map((p) => p[0]).reverse().join('').slice(0, 2).toUpperCase();
+  const display = (n) => n.includes(',') ? n.split(',').map((s) => s.trim()).reverse().join(' ') : n;
 
-  $('pick').innerHTML += ROSTER.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  $('pick').addEventListener('change', () => { current = ROSTER.find(p => p.id === $('pick').value) || null; render(); sync(comprehend.patient); });
-
-  function render() {
-    $('metrics').innerHTML = current ? `
-      <span class="metric"><small>${current.tests[0]} · ${current.date}</small><b>${current.jump} cm</b></span>
-      <span class="metric ${current.asym > 10 ? 'bad' : ''}"><small>asymmetry</small><b>${current.asym}%</b></span>
-      <span class="metric"><small>note</small><b style="font-size:14px">${current.note}</b></span>` : '—';
-    const ours = comprehend.patient;
-    $('link').textContent = !comprehend.ready ? 'not connected to Comprehend' : !ours ? 'Comprehend: no chart open'
-      : `Comprehend: ${ours.name}${ours.yourId ? ' · linked ' + ours.yourId : ''}`;
+  function renderRoster() {
+    $('roster').innerHTML = ROSTER.map((p) => `<button class="pt ${current && current.id === p.id ? 'active' : ''}" data-id="${p.id}"><span class="avatar">${initials(p.name)}</span><span><div>${p.name}</div><div class="meta">${p.dx} · last test ${p.latest}</div></span></button>`).join('');
   }
+  function renderChip() {
+    const ours = comprehend.patient, chip = $('chip');
+    if (!comprehend.ready) { chip.className = 'chip'; $('chipText').textContent = 'Not connected to Comprehend'; return; }
+    if (!ours) { chip.className = 'chip'; $('chipText').textContent = 'Comprehend · no chart open'; return; }
+    chip.className = 'chip on'; $('chipText').textContent = `Comprehend · ${ours.name}${ours.yourId ? ' · linked' : ''}`;
+  }
+  function renderVisit(p) {
+    const a = latest && latest.patientId === (comprehend.patient && comprehend.patient.id) ? latest.answers : null;
+    if (!a) return `<div class="empty">Comprehend fills this in from today's visit when the note is generated — which results the PT went over with ${display(p.name).split(' ')[0]}, the limb of concern, and any plan changes.</div>`;
+    const rows = p.tests.map((t) => { const v = a.discussed ? a.discussed[t.name] : null;
+      return `<div class="row"><span class="mark ${v === true ? 'yes' : ''}">${v === true ? '✓' : v === false ? '–' : '·'}</span>${t.name}<span style="margin-left:auto;color:var(--muted);font-size:12px">${v === true ? 'discussed' : v === false ? 'not discussed' : '—'}</span></div>`; }).join('');
+    const plan = (a.plan_changes || []).length ? a.plan_changes.map((c) => `<div>• ${c}</div>`).join('') : '<span style="color:var(--muted)">none stated</span>';
+    return `${rows}<div class="kv"><span>Side of concern</span><div>${a.side_of_concern || '—'}</div><span>Plan changes</span><div>${plan}</div></div>`;
+  }
+  function render() {
+    renderRoster(); renderChip();
+    if (!current) { $('content').innerHTML = '<p style="color:var(--muted)">Select an athlete.</p>'; return; }
+    const p = current, main = p.tests[0], asym = main.asym;
+    const bar = asym == null ? '' : `<div class="asym"><div class="lbl"><span>Left</span><span>${main.name} asymmetry · ${Math.abs(asym)}% ${asym < 0 ? 'L' : 'R'} deficit${Math.abs(asym) > 10 ? ' · above 10% threshold' : ''}</span><span>Right</span></div>
+      <div class="bar"><i></i><b class="${Math.abs(asym) > 10 ? 'bad' : ''}" style="${asym < 0 ? `right:50%;width:${Math.abs(asym) * 2}%` : `left:50%;width:${Math.abs(asym) * 2}%`}"></b></div></div>`;
+    $('content').innerHTML = `
+      <div class="head"><h1>${display(p.name)}</h1><div class="sub">DOB ${p.dob} · ${p.dx} · involved side ${p.side} · last test ${p.latest}</div></div>
+      <div class="tiles">
+        <div class="tile"><small>${main.name} · jump height</small><b>${main.value} <span style="font-size:13px;color:var(--muted)">${main.unit}</span></b><span class="trend">${p.history.length > 1 ? `${p.history[1][2]} on ${p.history[1][0]}` : ''}</span></div>
+        <div class="tile ${asym != null && Math.abs(asym) > 10 ? 'bad' : ''}"><small>L/R asymmetry</small><b>${asym == null ? '—' : Math.abs(asym) + '%'}</b><span class="trend">${asym == null ? '' : Math.abs(asym) > 10 ? 'above 10% threshold' : 'within normal'}</span></div>
+        <div class="tile"><small>Tests · latest session</small><b>${p.tests.length}</b><span class="trend">${p.tests.map((t) => t.name).join(', ')}</span></div>
+        <div class="tile"><small>Tester note</small><b style="font-size:14px;line-height:1.3;margin-top:8px">${main.note || '—'}</b></div>
+      </div>
+      <div class="grid">
+        <div class="card"><h3>Test history <span class="tag">${p.history.length} sessions</span></h3>${bar}
+          <table><thead><tr><th>Date</th><th>Test</th><th>Result</th><th>Asym.</th></tr></thead><tbody>
+          ${p.history.map(([d, t, v, a]) => `<tr><td>${d}</td><td>${t}</td><td class="n">${v}</td><td><span class="pill ${Math.abs(a) > 10 ? 'bad' : 'good'}">${Math.abs(a)}% ${a < 0 ? 'L' : 'R'}</span></td></tr>`).join('')}
+          </tbody></table></div>
+        <div class="card"><h3>In-clinic today <span class="tag">from Comprehend</span></h3><div class="visit">${renderVisit(p)}</div></div>
+      </div>`;
+  }
+  $('roster').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; current = ROSTER.find((p) => p.id === b.dataset.id); render(); sync(comprehend.patient); });
 
+  // ---- Comprehend -----------------------------------------------------------------------------
   const nameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
-  const byName = (name) => ROSTER.find(p => nameKey(p.name) === nameKey(name)) || null;
+  const byName = (name) => ROSTER.find((p) => nameKey(p.name) === nameKey(name)) || null;
   comprehend.on('patient', (patient, { reason }) => {
     log(`patient(${reason}) → ${patient ? patient.name : 'none'}${patient && patient.yourId ? ' · linked ' + patient.yourId : ''}`);
-    if (patient && patient.yourId) { current = ROSTER.find(p => p.id === patient.yourId) || current; }
-    else if (patient && !current) { current = byName(patient.name); }        // prefill by name until linked
-    $('pick').value = current ? current.id : '';
+    if (patient && patient.yourId) { current = ROSTER.find((p) => p.id === patient.yourId) || current; }
+    else if (patient && !current) { current = byName(patient.name); }
     render(); sync(patient);
   });
-  comprehend.on('error', ({ code }) => { $('answers').textContent = code; log(`error ← ${code}`); });
+  comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
   function sync(patient) {
     if (!patient || !current) return;
-    patient.setContext(`## Force plate — ${current.tests[0]} ${current.date}
-- Jump height: ${current.jump} cm
-- L/R asymmetry: ${current.asym}% ${current.asym > 10 ? '(above 10% threshold)' : ''}
-- Tester note: ${current.note}`, { id: current.id, name: current.name });
-    log(`setContext → ${patient.id} as "${current.name}" (${current.id})`);
-
-    // Questions built from THIS patient's test battery.
+    const p = current, main = p.tests[0];
+    patient.setContext(`## Forceline — ${main.name} ${p.latest}
+- ${main.name}: ${main.value} ${main.unit}${main.asym != null ? `; L/R asymmetry ${Math.abs(main.asym)}% ${main.asym < 0 ? 'L' : 'R'} deficit${Math.abs(main.asym) > 10 ? ' (above 10% threshold)' : ''}` : ''}
+${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}
+- Tester note: ${main.note || 'none'}`, { id: p.id, name: p.name });
+    log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
     if (unsubscribe) unsubscribe();
     const discussed = {};
-    for (const t of current.tests) discussed[t] = `boolean — was the ${t} result discussed with the patient today?`;
+    for (const t of p.tests) discussed[t.name] = `boolean — was the ${t.name} result discussed with the patient today?`;
     unsubscribe = comprehend.subscribe({
       discussed,
       side_of_concern: { _choices: ['left', 'right', 'both', 'none stated'], _description: 'limb the PT was concerned about' },
       plan_changes: 'string[] — changes to the plan of care the PT stated (progressions, holds, referrals)',
     }, (answers, forPatient, meta) => {
-      if (comprehend.patient && comprehend.patient.id !== forPatient.id) return;
-      $('answers').textContent = `v${meta.version}\n` + JSON.stringify(answers, null, 2);
-      log(`answers ← v${meta.version}`);
+      latest = { patientId: forPatient.id, answers };
+      log(`answers ← v${meta.version} for ${forPatient.name || forPatient.id}`); render();
     });
-    log(`subscribe → ${current.tests.length} test booleans for ${current.name}`);
+    log(`subscribe → ${p.tests.length} test booleans for ${p.name}`);
   }
-
   render();
 </script>
 </body>

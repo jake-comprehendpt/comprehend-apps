@@ -1,9 +1,13 @@
 {
-  "name": "Example HEP app",
+  "name": "Cadence",
   "launchUrl": "https://app.comprehendpt.com/vendor-examples/hep-rtm.html",
-  "description": "Home exercise programs and RTM adherence. Asks, per patient, whether each prescribed exercise was performed today.",
+  "description": "Home exercise programs and remote therapeutic monitoring. Asks, per patient, whether each prescribed exercise was performed today.",
   "icon": "https://app.comprehendpt.com/vendor-examples/.well-known/hep-rtm-icon.svg",
+  "color": "#0f766e",
   "docs": "https://app.comprehendpt.com/developers.html",
   "baaContact": "partners@comprehendpt.ai",
-  "categories": ["hep", "rtm"]
+  "categories": [
+    "hep",
+    "rtm"
+  ]
 }

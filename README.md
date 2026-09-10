@@ -9,7 +9,18 @@ Comprehend is the ambient AI that listens to the PT visit and writes the note in
 - **Examples:** [`vendor-examples/`](vendor-examples/) — a home-exercise / RTM app (per-patient subscriptions built from each patient's program) and a force-plate app
 - **The script:** `https://app.comprehendpt.com/comprehend.js` — load it from there, don't vendor a copy; it pins the host origin and evolves with the contract
 
-This repo mirrors what `app.comprehendpt.com` serves so you can read it, diff it, and file issues. Source of truth lives in Comprehend's app repo; changes land here via `scripts/sync-vendor-sdk.sh`. Getting listed in the directory: [CONTRIBUTING.md](CONTRIBUTING.md).
+This repo mirrors what `app.comprehendpt.com` serves so you can read it, diff it, and file issues. Source of truth lives in Comprehend's app repo; changes land here via `scripts/sync-vendor-sdk.sh`. Getting listed in the directory: [CONTRIBUTING.md](CONTRIBUTING.md). **Using Claude Code or another coding agent?** Point it at this repo — [`AGENTS.md`](AGENTS.md) is written for it.
+
+## The lifecycle
+
+This is the whole integration, in order. Every example in this repo follows it.
+
+1. **Boot.** Comprehend opens your launch URL in a frame (`?comprehend=1`). Your page loads `comprehend.js`. If the user needs to sign in, they do it here — inside the frame.
+2. **We fire `patient`.** As soon as the script initialises, Comprehend sends the `patient` event with reason `ready`. **Guaranteed** — even if your script loaded late, and even when no chart is open (`patient` is `null`). Register the listener whenever you like; a late listener is called immediately with the current state.
+3. **Load that patient in your platform.** Use `patient.yourId` (your id for them, if you've linked before), else `patient.name` / `patient.dob`. Not in your system? Offer to create them. Then open their chart in your UI.
+4. **When your patient page has loaded, set context.** `patient.setContext(markdown, { id, name })` — what you know about them, in a few lines of markdown, plus your id and name for them. That call is the link: next visit `yourId` arrives set.
+5. **Optionally subscribe.** `comprehend.subscribe(structure, callback)` — the shape you want back, built from this patient's own data. Comprehend answers when the clinician acts and pushes the result. `{}` gets you a plain-text summary instead.
+6. **Do it again on every `patient` event** (`changed`, `refresh`): tear down the old subscription, find, open, set context, subscribe.
 
 ## The whole API
 

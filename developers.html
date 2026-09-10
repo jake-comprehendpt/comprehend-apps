@@ -64,6 +64,7 @@
     <p>Comprehend is the ambient AI that listens to the PT visit and writes the note inside the EMRs clinics already use. Bring your app in — as it is — and two things happen: what you know about the patient lands in the clinical record, in every EMR; and what happened in the room comes back to you, per patient, the moment the note is written.</p>
     <a class="cta" href="./vendor-sandbox.html">Open the sandbox</a>
     <a class="cta ghost" href="#why">Why partners integrate</a>
+    <p class="fine" style="margin-top:12px">Everything here is open: <a href="https://github.com/jake-comprehendpt/comprehend-apps">github.com/jake-comprehendpt/comprehend-apps</a> — the script, sandbox, examples and an <code>AGENTS.md</code>. Building with Claude Code or Cursor? Point it at the repo and ask for the integration.</p>
     <p class="fine" style="margin-top:14px">No account, no SDK install, no npm. One hosted script, two events, and the questions you choose to ask.</p>
    </div>
    <figure class="wire" aria-label="Wireframe: a vendor app running inside Comprehend's Apps tab">
@@ -329,6 +330,10 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
   <section id="start">
     <h2>Start building</h2>
+    <div class="card" style="margin-bottom:18px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1 1 320px"><h3 style="margin:0 0 6px">Start from the repo</h3><p style="margin:0"><a href="https://github.com/jake-comprehendpt/comprehend-apps">github.com/jake-comprehendpt/comprehend-apps</a> holds the script, the sandbox, both example apps, their manifests, and an <code>AGENTS.md</code> that spells out the lifecycle and the contract for a coding agent. Hand it to Claude Code with "add a Comprehend integration to our app", then review the result in the sandbox.</p></div>
+      <a class="cta ghost" style="margin:0;white-space:nowrap" href="https://github.com/jake-comprehendpt/comprehend-apps">Open the repo →</a>
+    </div>
     <div class="cols">
       <div class="card"><h3>1 · Sandbox</h3><p>A fake Comprehend around your real app: two fake patients, canned encounters, mock answers in the shape you asked for, a server-side check that both our origins can frame you, and a log of every message across the frame. Point it at <code>localhost</code>. <a href="./vendor-sandbox.html">Open →</a></p></div>
       <div class="card"><h3>2 · Examples</h3><p>Two small pages that exercise the whole contract: a <a href="./vendor-examples/hep-rtm.html">home-exercise / RTM app</a> ("Cadence" — per-patient subscriptions built from each patient's program) and a <a href="./vendor-examples/force-plate.html">force-plate app</a> ("Forceline"). Both are fictional products with a real product UI; the Comprehend integration is the "In-clinic today" card. View source; copy freely.</p></div>

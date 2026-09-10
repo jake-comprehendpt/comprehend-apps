@@ -227,22 +227,23 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
       <h3 style="margin:4px 0">Handle the patient</h3>
       <p class="fine">One callback. Comprehend hands you a <em>patient handle</em> — who it has open — with a reason: <code>ready</code> (your frame just loaded), <code>changed</code> (the clinician switched charts), <code>refresh</code> (the clinician is about to generate a note, or pressed <em>Refresh</em>). Find that person in your system (or offer to create them), open their chart in your UI, and once it's up, tell Comprehend what you know and ask your questions. Same code path every time. If the clinician picks a different patient inside your app, call <code>setContext</code> again from the same place.</p>
       <pre><code>comprehend.on(<span class="s">'patient'</span>, <span class="k">async function</span> onPatient(patient, { reason }) {
-  <span class="k">if</span> (!patient) <span class="k">return</span>;                        <span class="c">// Comprehend has no chart open</span>
-  <span class="c">// patient = { id, name, dob, yourId, setContext(), clearContext() }</span>
+  <span class="c">// patient = { id, name, dob, yourId } — or null when the visit has no patient yet.</span>
+  <span class="c">// Keep going either way: setContext below is what lets the clinician pull yours in.</span>
 
   <span class="c">// ---- your business logic -------------------------</span>
-  <span class="k">let</span> mine = byId(patient.yourId) || byName(patient.name);   <span class="c">// who this is in YOUR system</span>
-  <span class="k">if</span> (!mine) {
+  <span class="k">let</span> mine = patient ? byId(patient.yourId) || byName(patient.name) : currentlyOpenInYourApp();
+  <span class="k">if</span> (patient &amp;&amp; !mine) {
     <span class="c">// Not in your system yet — offer to create them from what Comprehend knows.</span>
     mine = <span class="k">await</span> offerToCreatePatient({ name: patient.name, dob: patient.dob });
     <span class="k">if</span> (!mine) <span class="k">return</span>;                        <span class="c">// the clinician said no; wait for the next patient event</span>
   }
+  <span class="k">if</span> (!mine) <span class="k">return</span>;                          <span class="c">// nothing open on your side either</span>
 
   openChart(mine);                               <span class="c">// navigate your UI to this patient …</span>
 
   onChartLoaded(mine, () =&gt; {                    <span class="c">// … and once that page is up, tell Comprehend what you know.</span>
     <span class="c">// This call is also what links the two records — next visit, patient.yourId === mine.id.</span>
-    patient.setContext(<span class="s">`## Home program — last 7 days
+    comprehend.setContext(<span class="s">`## Home program — last 7 days
 - Adherence: ${mine.adherence}
 - Pain trend: ${mine.painTrend}`</span>, { id: mine.id, name: mine.fullName });
 
@@ -308,8 +309,8 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
       <tr><td><code>comprehend.on('patient', (patient, { reason }) =&gt; …)</code></td><td><code>patient</code> is a handle <code>{ id, name, dob, yourId, setContext(), clearContext() }</code> or <code>null</code> when no chart is open. <code>reason</code> is <code>ready</code> (fires exactly once per load, first, even with <code>null</code>), <code>changed</code>, or <code>refresh</code>. Late listeners are called immediately with the current state. <code>yourId</code> is the <code>id</code> you gave <code>setContext</code> last time — stored on our patient record, so it survives devices and sessions; short-circuit on it.</td></tr>
       <tr><td><code>comprehend.on('error', ({ code }) =&gt; …)</code></td><td>Codes only: <code>STALE_PATIENT</code>, <code>CONTEXT_REJECTED</code>, <code>BAD_STRUCTURE</code>, <code>TOO_MANY_SUBSCRIPTIONS</code>. Reasons and names go to the clinician, not to you.</td></tr>
       <tr><th>Content — you tell us</th><th></th></tr>
-      <tr><td><code>patient.setContext(markdown, { id, name })</code></td><td>Replaces your context for that patient. Markdown, ≤ 8 KB. <code>{ id, name }</code> is <em>your</em> patient; <code>name</code> is required and must resemble the chart's name; <code>id</code> comes back as <code>yourId</code> next time. The handle carries our patient id for you — a handle from a chart the clinician has left is dropped with <code>STALE_PATIENT</code>.</td></tr>
-      <tr><td><code>patient.clearContext()</code></td><td>Withdraws your content; the link is kept.</td></tr>
+      <tr><td><code>comprehend.setContext(markdown, { id, name, dob })</code></td><td>The one method — call it whenever your patient page has loaded, with or without a Comprehend patient. Replaces your context for that patient. Markdown, ≤ 8 KB. <code>{ id, name }</code> is <em>your</em> patient; <code>name</code> is required and must resemble the chart's name; <code>id</code> comes back as <code>yourId</code> next time. The handle carries our patient id for you — a handle from a chart the clinician has left is dropped with <code>STALE_PATIENT</code>.</td></tr>
+      <tr><td><code>comprehend.clearContext()</code></td><td>Withdraws your content; the link is kept.</td></tr>
       <tr><th>Questions — you ask</th><th></th></tr>
       <tr><td><code>comprehend.subscribe(structure, (answers, patient, meta) =&gt; …)</code></td><td>Registers a question structure; returns <code>unsubscribe()</code>. Answered on clinician action; <code>meta</code> is <code>{ version, partial, errors }</code>. Up to 10 live subscriptions, 200 leaves each. Build it per patient.</td></tr>
       <tr><td><code>comprehend.patient</code></td><td>The current handle, or <code>null</code>, for whoever wants to pull.</td></tr>

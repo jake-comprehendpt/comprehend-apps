@@ -253,16 +253,19 @@
   comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
   function sync(patient) {
-    if (!patient || !current) return;
+    if (!current) return;   // nothing open in Cadence yet — nothing to say
     const p = current;
-    // 1. Context: what Cadence knows about the patient we have open. This call is also the link.
-    patient.setContext(`## Cadence — home program, last 7 days
+    // 1. Context: what Cadence knows about the patient we have open — the ONE call, whether or not
+    //    Comprehend has a patient on the visit yet. With one it's also the link; without one the
+    //    clinician can pull ours in from Comprehend.
+    comprehend.setContext(`## Cadence — home program, last 7 days
 - Adherence: ${p.adherence}% (${p.sessions}/7 sessions)
 - Pain (self-reported): ${p.pain[0]} → ${p.pain[p.pain.length - 1]}
 - RTM minutes this month: ${p.rtm}
 - Program: ${p.program.map((e) => `${e.name} ${e.dose}`).join('; ')}
 ${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name, dob: p.dob });
-    log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
+    log(`setContext → ${patient ? patient.id : '(no Comprehend patient yet)'} as "${p.name}" (${p.id})`);
+    if (!patient) return;   // questions wait until the visit has a patient
     // 2. Questions built from THIS patient's program.
     if (unsubscribe) unsubscribe();
     const performed = {};

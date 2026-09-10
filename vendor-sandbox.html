@@ -339,7 +339,12 @@
     switch (msg.type) {
       case 'comprehend:context': {
         log('in', `setContext for ${msg.patientId} as "${msg.name}" (yourId ${msg.yourId ?? '—'}, ${(msg.markdown || '').length} chars)`);
-        if (!state.patient || String(msg.patientId) !== state.patient.id) return sendError(undefined, 'STALE_PATIENT');
+        if (!state.patient) {
+          // No patient on the fake visit: hold it; the clinician can pull the app's patient in.
+          state.pendingAssign = { markdown: msg.markdown, name: msg.name, dob: msg.dob || null, yourId: msg.yourId ?? null };
+          renderLink(); return;
+        }
+        if (msg.patientId != null && String(msg.patientId) !== state.patient.id) return sendError(undefined, 'STALE_PATIENT');
         // Same rules as production: a prior link (their id) is authoritative; equal DOB settles it;
         // else names must resemble; else the CLINICIAN confirms — in Comprehend's UI, never the app's.
         const ref = state.refs[`${state.appKey}:${state.patient.id}`];
@@ -406,6 +411,19 @@
     log('out', `clinician confirmed link: ${state.patient.name} ↔ "${p.name}"${p.yourId ? ' (' + p.yourId + ')' : ''} — patient(changed) with yourId`);
     sendPatient('changed');
   }
+  // Clinician pulls the app's patient onto the empty visit: a fake patient is created (or matched by name),
+  // becomes the open chart, and the held context goes through the normal guard.
+  function pullPatient() {
+    const h = state.pendingAssign; if (!h) return;
+    const key = (n) => String(n || '').toLowerCase().replace(/[^a-z ,]/g, '').split(/[ ,]+/).filter(Boolean).sort().join(' ');
+    let p = PATIENTS.find((x) => key(x.name) === key(h.name));
+    if (!p) { const parts = h.name.includes(',') ? h.name.split(',').map((s) => s.trim()).reverse() : [h.name]; p = { id: 'sbx-p' + (PATIENTS.length + 1), name: parts.join(' '), dob: h.dob || '' }; PATIENTS.splice(PATIENTS.length - 1, 0, p); }
+    state.pendingAssign = null; state.patient = p; state.contextVersion = 0; state.lastMismatch = null;
+    log('out', `clinician pulled "${p.name}" onto the visit from your app`);
+    renderPatients(); sendPatient('changed');
+    // re-run the held context through the guard, exactly as production does
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'comprehend:context', patientId: p.id, markdown: h.markdown, name: h.name, dob: h.dob, yourId: h.yourId }, origin: state.origin, source: frame.contentWindow }));
+  }
   function renderLink() {
     const el = $('linkStatus'); el.className = 'status'; $('clinicianToast').innerHTML = '';
     if (!state.origin) { el.textContent = 'Load your app first.'; return; }
@@ -415,7 +433,12 @@
       $('confirmLink').onclick = confirmLink;
       return;
     }
-    if (!state.patient) { el.textContent = 'No chart open in Comprehend.'; return; }
+    if (!state.patient) {
+      const h = state.pendingAssign;
+      el.textContent = h ? `No patient on this visit. Your app has "${h.name}"${h.dob ? ` (DOB ${h.dob})` : ''} open.` : 'No chart open in Comprehend.';
+      if (h) { $('clinicianToast').innerHTML = `<div class="toast">Clinician sees: <b>This visit has no patient. Your app has "${escapeHtml(h.name)}" open.</b> <button id="pullPatient" style="margin-left:8px">Use your app's patient for this visit</button><br><span style="opacity:.8">Nothing is assigned until the clinician clicks — in Comprehend, not in your UI.</span></div>`; $('pullPatient').onclick = pullPatient; }
+      return;
+    }
     const ref = state.refs[`${state.appKey}:${state.patient.id}`];
     const b = state.buffers.get(state.patient.id);
     if (b) { el.className = 'status ok'; el.textContent = `Comprehend: ${state.patient.name} ↔ your app: ${b.name}${ref ? ` · linked as ${ref}` : ' · no id given'}`; }
@@ -440,7 +463,7 @@
   $('narrow').onclick = () => { const f = frame.parentElement; const on = f.classList.toggle('narrow'); $('narrow').textContent = on ? 'Preview full width' : 'Preview at 350 px'; $('narrow').classList.toggle('on', on); log('out', on ? 'frame at 350 px — the Chrome side panel at its usual width' : 'frame at full width'); };
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
-  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); } });   // chart open re-announces the patient; nothing is answered yet
+  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; if (state.patient) state.pendingAssign = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); } });   // chart open re-announces the patient; nothing is answered yet
   function markStale(why) {
     state.contextVersion += 1; renderPatients(); renderSubs();
     const anyAnswered = Array.from(state.subs.values()).some((s) => s.lastAnswers);

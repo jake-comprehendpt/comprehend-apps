@@ -8,8 +8,9 @@
  *   comprehend.on('error',   ({ code }) => …)              // STALE_PATIENT | CONTEXT_REJECTED | BAD_STRUCTURE | TOO_MANY_SUBSCRIPTIONS
  *
  *   CONTENT (you → us, on the patient handle)
- *   patient.setContext(markdown, { id, name, dob? })       // what you know about YOUR patient; this is also the link (dob helps when names differ)
- *   patient.clearContext()
+ *   comprehend.setContext(markdown, { id, name, dob })   // what you know about YOUR patient — the ONE call; also the link.
+ *                                                          // Works with no Comprehend patient too: the clinician can pull yours in.
+ *   comprehend.clearContext()
  *
  *   QUESTIONS (you ask, we answer when the clinician acts)
  *   comprehend.subscribe(structure, (answers, patient, meta) => …)  // → unsubscribe()
@@ -79,33 +80,35 @@
   // you gave us for this patient before (or null). Methods carry `id` on the
   // wire so the host can drop anything meant for a chart that's no longer open.
   function makeHandle(p) {
+    // Plain data: who Comprehend has open, and your id for them if you've linked before.
     if (!p) return null;
-    var handle = {
-      id: String(p.id),
-      name: p.name || '',
-      dob: p.dob || null,
-      yourId: p.ref != null ? String(p.ref) : null,
-      setContext: function (markdown, you) {
-        if (typeof markdown !== 'string') throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name }) — markdown must be a string');
-        var yourName = you && you.name;
-        if (yourName && typeof yourName === 'object') yourName = [yourName.first, yourName.last].filter(Boolean).join(' ');
-        if (typeof yourName !== 'string' || !yourName.trim()) {
-          throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name }) — name is the name of the patient open in YOUR app');
-        }
-        post({
-          type: 'comprehend:context',
-          patientId: handle.id,
-          markdown: markdown,
-          yourId: you && you.id != null ? String(you.id) : null,
-          name: yourName.trim(),
-          dob: you && you.dob ? String(you.dob) : null
-        });
-      },
-      clearContext: function () {
-        post({ type: 'comprehend:clearContext', patientId: handle.id });
-      }
-    };
-    return handle;
+    return { id: String(p.id), name: p.name || '', dob: p.dob || null, yourId: p.ref != null ? String(p.ref) : null };
+  }
+
+  // ONE method for everything you know about the patient you have open. Call it
+  // whenever your patient page has loaded — whether or not Comprehend has a
+  // patient on the visit. With one: this is also the link (name/DOB checked,
+  // clinician confirms if they don't match). Without one: Comprehend offers the
+  // clinician a one-click "pull this patient in"; if they accept, you get
+  // patient(changed) with yourId set and simply run your handler again.
+  function setContext(markdown, you) {
+    if (typeof markdown !== 'string') throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name, dob }) — markdown must be a string');
+    var yourName = you && you.name;
+    if (yourName && typeof yourName === 'object') yourName = [yourName.first, yourName.last].filter(Boolean).join(' ');
+    if (typeof yourName !== 'string' || !yourName.trim()) {
+      throw raise('BAD_CONTEXT', 'setContext(markdown, { id, name, dob }) — name is the name of the patient open in YOUR app');
+    }
+    post({
+      type: 'comprehend:context',
+      patientId: current ? current.id : null,
+      markdown: markdown,
+      yourId: you && you.id != null ? String(you.id) : null,
+      name: yourName.trim(),
+      dob: you && you.dob ? String(you.dob) : null
+    });
+  }
+  function clearContext() {
+    post({ type: 'comprehend:clearContext', patientId: current ? current.id : null });
   }
 
   global.addEventListener('message', function (event) {
@@ -217,6 +220,8 @@
   var comprehend = {
     get ready() { return ready; },
     get patient() { return current; },
+    setContext: setContext,
+    clearContext: clearContext,
     get contextVersion() { return contextVersion; },
 
     on: function (event, fn) {

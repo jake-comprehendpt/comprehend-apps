@@ -200,14 +200,16 @@
   comprehend.on('error', ({ code }) => { $('chip').className = 'chip err'; $('chipText').textContent = `Comprehend · ${code.toLowerCase().replace('_', ' ')}`; log(`error ← ${code}`); });
 
   function sync(patient) {
-    if (!patient || !current) return;
+    if (!current) return;   // nothing open in Forceline yet
     const p = current, main = p.tests[0];
-    if (!main) { patient.setContext(`## Forceline\n- New athlete, no force plate test on file yet`, { id: p.id, name: p.name, dob: p.dob }); log(`setContext → ${patient.id} as "${p.name}" (${p.id}) — no tests yet`); return; }
-    patient.setContext(`## Forceline — ${main.name} ${p.latest}
+    // The ONE call — with or without a Comprehend patient on the visit.
+    if (!main) { comprehend.setContext(`## Forceline\n- New athlete, no force plate test on file yet`, { id: p.id, name: p.name, dob: p.dob }); log(`setContext as "${p.name}" (${p.id}) — no tests yet`); return; }
+    comprehend.setContext(`## Forceline — ${main.name} ${p.latest}
 - ${main.name}: ${main.value} ${main.unit}${main.asym != null ? `; L/R asymmetry ${Math.abs(main.asym)}% ${main.asym < 0 ? 'L' : 'R'} deficit${Math.abs(main.asym) > 10 ? ' (above 10% threshold)' : ''}` : ''}
 ${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}
 - Tester note: ${main.note || 'none'}`, { id: p.id, name: p.name, dob: p.dob });
-    log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
+    log(`setContext → ${patient ? patient.id : '(no Comprehend patient yet)'} as "${p.name}" (${p.id})`);
+    if (!patient) return;   // questions wait until the visit has a patient
     if (unsubscribe) unsubscribe();
     const discussed = {};
     discussed._description = 'Which test results the PT went over with the patient today';

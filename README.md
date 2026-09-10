@@ -18,7 +18,7 @@ This is the whole integration, in order. Every example in this repo follows it.
 1. **Boot.** Comprehend opens your launch URL in a frame (`?comprehend=1`). Your page loads `comprehend.js`. If the user needs to sign in, they do it here — inside the frame.
 2. **We fire `patient`.** As soon as the script initialises, Comprehend sends the `patient` event with reason `ready`. **Guaranteed** — even if your script loaded late, and even when no chart is open (`patient` is `null`). Register the listener whenever you like; a late listener is called immediately with the current state.
 3. **Load that patient in your platform.** Use `patient.yourId` (your id for them, if you've linked before), else `patient.name` / `patient.dob`. Not in your system? Offer to create them. Then open their chart in your UI.
-4. **When your patient page has loaded, set context.** `patient.setContext(markdown, { id, name, dob })` — what you know about them, in a few lines of markdown, plus your id, name and (if you have it) DOB for them. That call is the link: next visit `yourId` arrives set. If the names don't look like the same person and DOBs can't settle it, Comprehend asks the clinician — in Comprehend — to confirm once; you then get a new `patient` event with `yourId` and run the same code again.
+4. **When your patient page has loaded, set context — always.** `comprehend.setContext(markdown, { id, name, dob })`: what you know about them, in a few lines of markdown, plus your id, name and DOB for them. Call it whether or not Comprehend has a patient on the visit. With one, that call is the link (next visit `yourId` arrives set). With none, Comprehend shows the clinician a one-click "Use <your app>'s patient for this visit"; when they click, the patient is found or created and you get `patient(changed)` with `yourId` set — run the same handler again. Nothing is assigned without that click. If the names don't look like the same person and DOBs can't settle it, Comprehend asks the clinician — in Comprehend — to confirm once; you then get a new `patient` event with `yourId` and run the same code again.
 5. **Optionally subscribe.** `comprehend.subscribe(structure, callback)` — the shape you want back, built from this patient's own data. Comprehend answers when the clinician acts and pushes the result. `{}` gets you a plain-text summary instead.
 6. **Do it again on every `patient` event** (`changed`, `refresh`): tear down the old subscription, find, open, set context, subscribe.
 
@@ -30,8 +30,8 @@ comprehend.on('patient', (patient, { reason }) => { … });  // patient | null; 
 comprehend.on('error',   ({ code }) => { … });              // codes only — the clinician gets the details
 
 // CONTENT — you tell us, on the patient handle we gave you.
-patient.setContext(markdown, { id, name });   // what you know about YOUR patient {id, name}. This is also the link.
-patient.clearContext();
+comprehend.setContext(markdown, { id, name, dob });   // the ONE call: what you know about YOUR patient. Also the link. Works with no Comprehend patient on the visit (the clinician can pull yours in)
+comprehend.clearContext();
 
 // QUESTIONS — you ask once per patient; we answer when the clinician acts.
 const unsubscribe = comprehend.subscribe(structure, (answers, patient, meta) => { … });
@@ -60,7 +60,7 @@ comprehend.patient;                           // the current handle, or null
 
     onChartLoaded(mine, () => {                                  // … and once that page is up, tell Comprehend what you know.
       // This call is also the link — next visit, patient.yourId === mine.id.
-      patient.setContext(`## Home program — last 7 days
+      comprehend.setContext(`## Home program — last 7 days
   - Adherence: ${mine.adherence}
   - Pain trend: ${mine.painTrend}`, { id: mine.id, name: mine.fullName });
 
@@ -104,10 +104,10 @@ comprehend.patient;                           // the current handle, or null
 
 | Surface | Notes |
 |---|---|
-| `comprehend.on('patient', fn)` | `fn(patient, { reason })`. `patient` is a **handle** `{ id, name, dob, yourId, setContext(), clearContext() }` or `null`. `yourId` is the `id` you passed to `setContext` for this patient before. Late listeners are called immediately with the current state. |
+| `comprehend.on('patient', fn)` | `fn(patient, { reason })`. `patient` is a **handle** `{ id, name, dob, yourId }` or `null`. `yourId` is the `id` you passed to `setContext` for this patient before. Late listeners are called immediately with the current state. |
 | `comprehend.on('error', fn)` | `fn({ code })`. Codes: `STALE_PATIENT`, `CONTEXT_REJECTED`, `BAD_STRUCTURE`, `TOO_MANY_SUBSCRIPTIONS`. Never names or reasons — those go to the clinician. |
-| `patient.setContext(markdown, { id, name })` | Replaces your context for that patient (markdown, ≤ 8 KB). `{ id, name }` is *your* patient; `name` is required and must resemble the chart's name (content and link are rejected together if not). The handle carries our patient id for you; a handle from a chart the clinician has left is dropped with `STALE_PATIENT`. |
-| `patient.clearContext()` | Withdraws your content; the link is kept. |
+| `comprehend.setContext(markdown, { id, name, dob })` | The one method. Call it whenever your patient page has loaded, with or without a Comprehend patient on the visit. Replaces your context for that patient (markdown, ≤ 8 KB). `{ id, name }` is *your* patient; `name` is required and must resemble the chart's name (content and link are rejected together if not). The handle carries our patient id for you; a handle from a chart the clinician has left is dropped with `STALE_PATIENT`. |
+| `comprehend.clearContext()` | Withdraws your content; the link is kept. |
 | `comprehend.subscribe(structure, fn)` | `fn(answers, patient, { version, partial, errors })` whenever we evaluate. Returns `unsubscribe()`. ≤ 10 live subscriptions, ≤ 200 leaves each. **Re-subscribe per patient** with structures built from that patient's data. |
 | `comprehend.patient` | The current handle or `null`. |
 

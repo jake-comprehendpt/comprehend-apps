@@ -287,6 +287,8 @@
       if (global.document.body) new global.ResizeObserver(schedule).observe(global.document.body);
     }
     global.addEventListener('load', schedule);
+    global.addEventListener('resize', schedule);            // the host resized/showed the frame
+    global.document.addEventListener('visibilitychange', schedule);
     setInterval(schedule, 1000);   // catches content that changes without resizing the root (fonts, images)
     schedule();
   })();

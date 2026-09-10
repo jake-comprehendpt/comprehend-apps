@@ -187,6 +187,8 @@
       current = linked || byName(patient.name) || null;                               // else open them by name
       if (!current) offer = { name: patient.name, dob: patient.dob };                 // not in Forceline: offer to create
     }
+    // patient === null (visit has no patient yet): `current` stays whatever the user has open in Forceline;
+    // sync() still calls setContext for them, which is what lets the clinician pull them onto the visit.
     openChart(patient);
   });
   function openChart(patient) { render(); onChartLoaded(() => sync(patient)); }   // your router + page-loaded hook, in miniature

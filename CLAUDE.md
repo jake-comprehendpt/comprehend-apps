@@ -21,6 +21,8 @@ A page on the vendor's own origin that Comprehend opens in an iframe next to the
 
 Keep your page at its natural height (no fixed-height body with its own scroll); the script reports content height and Comprehend sizes the frame.
 
+**Width: design for ~330 px first.** Clinicians overwhelmingly run Comprehend as the Chrome side panel beside their EMR at its minimum width (~350 px). Your page gets roughly 330 px. Single column, no horizontal scroll, nothing that only works on a desktop layout. Also make it look right full-width (the web app), but 330 px is the common case.
+
 ## Contract summary
 
 | Surface | Detail |

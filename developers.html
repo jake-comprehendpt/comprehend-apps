@@ -346,7 +346,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
   "name": "Your app",
   "launchUrl": "https://your-app.example/comprehend",
   "description": "One sentence a clinic admin understands.",
-  "icon": "https://your-app.example/icon-128.png",
+  "icon": "https://your-app.example/icon.svg",
   "color": "#0f766e",
   "docs": "https://your-app.example/comprehend",
   "baaContact": "privacy@your-app.example",
@@ -372,6 +372,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <ul class="fine">
       <li>Your launch URL must be <code>https</code> and framable by Comprehend — the web app <em>and</em> the Chrome extension's side panel: <code>Content-Security-Policy: frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc</code> (no <code>X-Frame-Options: DENY</code>). The sandbox's <em>Check my app</em> verifies both from our server.</li>
       <li>Publish a <a href="#manifest">manifest</a> at <code>/.well-known/comprehend-app.json</code> so admins see your name, description and BAA contact instead of a hostname. Optional, strongly recommended; required for a directory listing.</li>
+      <li><strong>Design for 350 px wide first.</strong> Most clinicians run Comprehend as the Chrome side panel next to their EMR, and it is almost always at its minimum width — about 350 px, with roughly 330 px left for your page. That is the normal case, not the edge case: single column, no horizontal scroll, controls that work at that width. The sandbox has a <em>350 px</em> toggle so you can see exactly what they see.</li>
       <li><strong>Your login must work inside a frame on our origin.</strong> Your session cookie is a third-party cookie there, so <code>SameSite=Lax</code> cookies are not sent and the app appears logged out. Mark the session cookie <code>SameSite=None; Secure; Partitioned</code> (CHIPS), or sign in via a popup (we allow popups). This is the one thing that bites first integrators.</li>
       <li>We append <code>?comprehend=1</code> to the launch URL so you can render an embedded layout.</li>
       <li>Load the script from <code>https://app.comprehendpt.com/comprehend.js</code> — don't vendor a copy; it pins the host origin and evolves with the contract.</li>

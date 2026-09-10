@@ -137,13 +137,15 @@ The clinic admin pastes *any link to your app* under *Admin Settings → Apps*. 
   "name": "Your app",
   "launchUrl": "https://your-app.example/comprehend",
   "description": "One sentence a clinic admin understands.",
-  "icon": "https://your-app.example/icon-128.png",
+  "icon": "https://your-app.example/icon.svg",
   "color": "#0f766e",
   "docs": "https://your-app.example/comprehend",
   "baaContact": "privacy@your-app.example",
   "categories": ["hep", "rtm"]
 }
 ```
+
+**Design for 350 px wide first.** Most clinicians run Comprehend as the Chrome side panel beside their EMR, almost always at its minimum width — about 350 px, roughly 330 px for your page. Treat that as the normal case: single column, no horizontal scroll, controls that work at that width. The sandbox has a 350 px toggle.
 
 Requirements: your launch URL is `https` and framable by both the web app and the Chrome extension side panel — `frame-ancestors https://app.comprehendpt.com chrome-extension://pjafhckheppfdbidlhoedddfgebmcmnc` (the sandbox's *Check my app* verifies both); we append `?comprehend=1`; handle `patient` being `null` and `yourId` being absent.
 

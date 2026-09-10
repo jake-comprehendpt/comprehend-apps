@@ -200,7 +200,7 @@
   async function checkHeaders() {
     const url = $('target').value.trim();
     const out = $('headerResults');
-    if (!/^https:\/\//.test(url)) { out.innerHTML = '<div class="status bad">Enter an https URL first — the check runs from our server, so localhost can\'t be reached from there. Use the curl below for localhost.</div>'; return; }
+    if (!/^https:\/\//.test(url)) { out.innerHTML = '<div class="status bad">Enter an https URL first — the check runs from our server, so localhost and file:// can\'t be reached from there. Use the curl below for localhost.</div>'; return; }
     out.innerHTML = '<div class="status">Checking…</div>';
     try {
       const rsp = await fetch(`${API_BASE}/v1/vendorApps/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
@@ -307,7 +307,10 @@
   const hash = (v) => { const s = JSON.stringify(v, Object.keys(flatten(v)).sort()); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
   // ---- host → app ----------------------------------------------------------
-  function send(msg) { if (!state.origin || !frame.contentWindow) return; frame.contentWindow.postMessage(msg, state.origin); }
+  // FILE MODE: opened straight from disk (file://). Origins are 'null' there, so pinning is relaxed — a dev
+  // convenience only; production pins the registered origin. Server-side checks can't reach local files.
+  const FILE_MODE = location.protocol === 'file:';
+  function send(msg) { if (!state.origin || !frame.contentWindow) return; frame.contentWindow.postMessage(msg, FILE_MODE ? '*' : state.origin); }
   function patientForApp() { if (!state.patient) return null; return { ...state.patient, ref: state.refs[`${state.appKey}:${state.patient.id}`] ?? null }; }
   function sendPatient(reason) {
     if (reason === 'ready') state.ready = true;
@@ -333,7 +336,7 @@
   // ---- app → host ----------------------------------------------------------
   window.addEventListener('message', (event) => {
     if (!state.origin || event.source !== frame.contentWindow) return;
-    if (event.origin !== state.origin) { log('err', `ignored message from ${event.origin} (pinned to ${state.origin})`); return; }
+    if (FILE_MODE ? !(event.origin === 'null' || event.origin === 'file://' || event.origin === '') : event.origin !== state.origin) { log('err', `ignored message from ${event.origin} (pinned to ${state.origin})`); return; }
     const msg = event.data; if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('comprehend:')) return;
     markAlive();
     switch (msg.type) {
@@ -447,13 +450,13 @@
 
   function load(url) {
     let u; try { u = new URL(url); } catch (e) { $('targetStatus').textContent = 'Enter a full URL, e.g. http://localhost:5173/'; $('targetStatus').className = 'status bad'; return; }
-    state.origin = u.origin; state.appKey = u.origin + u.pathname;   // links are per app (production: per registered app id), not per origin
+    state.origin = FILE_MODE ? 'file://' : u.origin; state.appKey = (FILE_MODE ? 'file' : u.origin) + u.pathname;   // links are per app (production: per registered app id), not per origin
     state.ready = false; state.subs.clear(); state.lastMismatch = null;
     u.searchParams.set('comprehend', '1');
-    if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', location.origin);
+    if (location.origin !== 'https://app.comprehendpt.com') u.searchParams.set('comprehend_host', FILE_MODE ? 'file://' : location.origin);
     frame.src = u.toString();
     startWatchdog(); renderCurl();
-    $('targetStatus').textContent = `Loaded. Accepting messages only from ${state.origin}.`; $('targetStatus').className = 'status ok';
+    $('targetStatus').textContent = FILE_MODE ? 'Loaded from disk (file://). Origin pinning is relaxed here — a quick-look mode; serve over http(s) to test the real rules.' : `Loaded. Accepting messages only from ${state.origin}.`; $('targetStatus').className = 'status ok';
     localStorage.setItem('comprehend_sandbox_target', url);
     renderSubs(); renderBuffer(); renderLink();
   }

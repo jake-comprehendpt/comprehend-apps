@@ -42,6 +42,11 @@
       EXTENSION_HOSTS.indexOf(altHost) !== -1)
   ) {
     HOST_ORIGIN = altHost;
+  } else if ((altHost === 'file://' || altHost === 'null') && global.location.protocol === 'file:') {
+    // Dev convenience only: the sandbox and this page were both opened straight
+    // from disk. Browsers give file pages a null origin, so origin pinning cannot
+    // work there; we still require the message to come from our parent frame.
+    HOST_ORIGIN = '*';
   }
 
   var MAX_SUBSCRIPTIONS = 10;
@@ -112,7 +117,7 @@
   }
 
   global.addEventListener('message', function (event) {
-    if (event.origin !== HOST_ORIGIN || event.source !== global.parent) return;
+    if ((HOST_ORIGIN !== '*' && event.origin !== HOST_ORIGIN) || event.source !== global.parent) return;
     var msg = event.data;
     if (!msg || typeof msg.type !== 'string' || msg.type.indexOf('comprehend:') !== 0) return;
 

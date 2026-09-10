@@ -253,7 +253,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
 
     <div class="step"><div class="num">3</div><div>
       <h3 style="margin:4px 0">Ask about the visit</h3>
-      <p class="fine">Two arguments: the <em>structure</em> you want back and a <em>callback</em> that receives it filled in. Keys are your names. A plain string is a free-text question; add <code>_type</code>, <code>_choices</code> or a nested branch when you want the answer constrained. Build it from the patient's own data — one yes/no per prescribed exercise, choices from the exercises you actually assigned — and call it again when the patient changes.</p>
+      <p class="fine">Two arguments: the <em>structure</em> you want back and a <em>callback</em> that receives it filled in. Keys are your names. A plain string is a free-text question; add <code>_type</code>, <code>_choices</code> or a nested branch when you want the answer constrained. Build it from the patient's own data — one yes/no per prescribed exercise, choices from the exercises you actually assigned — and call it again when the patient changes. Comprehend answers when the clinician presses <em>Comprehend</em> (the note is generated) or a refresh — not when you subscribe, not when a chart opens — and pushes the result to you.</p>
       <pre><code><span class="k">let</span> unsubscribe;
 <span class="k">function</span> askAboutTheVisit(mine) {
   <span class="k">if</span> (unsubscribe) unsubscribe();               <span class="c">// questions are per patient</span>
@@ -296,7 +296,7 @@ regressed hip hinge to supported variant, progressed sit-to-stand to 3x12. Conti
     <div class="cols" style="margin-top:8px">
       <div class="card"><h3>Ready, without a ready event</h3><p>The first <code>patient</code> event fires exactly once per load, first, with <code>reason: 'ready'</code> — even when no chart is open (<code>patient</code> is <code>null</code>). Register callbacks whenever you like: before the handshake they queue; after it, a new listener is called immediately with the current state. Nothing can be missed.</p></div>
       <div class="card"><h3>Shape in, shape out</h3><p>Nest branches, put a <code>_description</code> on a leaf or a whole branch, constrain with <code>_type</code> (<code>boolean</code>, <code>integer</code>, <code>number</code>, <code>string</code>) or <code>_choices</code> (+ <code>_multiple</code> for pick-any), and use a one-row array for a list sized to the transcript.</p></div>
-      <div class="card"><h3>Push, not poll</h3><p>You never ask on a timer. We compute when the clinician acts and cache when nothing changed. Every answer names the patient it's for.</p></div>
+      <div class="card"><h3>Push, not poll</h3><p>You never ask on a timer, and nothing is answered on subscribe or chart open. We compute when the clinician presses <em>Comprehend</em> or a refresh, cache when nothing changed, and push. Every answer names the patient it's for.</p></div>
     </div>
   </section>
 

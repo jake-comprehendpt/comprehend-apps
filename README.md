@@ -117,7 +117,7 @@ A structure is a nested object whose **shape is the answer shape**. A plain stri
 
 ### When we answer
 
-Only on clinician action: chart open, note generated, *Refresh apps*. Never on a timer, never from your servers. Each of those also sends you `patient(refresh)`, so you can update your context first. A subscription is re-evaluated only when its structure, the visit, or the patient changed.
+Only on clinician action: the clinician presses **Comprehend** (the note is generated) or a refresh. Subscribing does not answer; opening a chart does not answer. Never on a timer, never from your servers. Each of those also sends you `patient(refresh)`, so you can update your context first. A subscription is re-evaluated only when its structure, the visit, or the patient changed.
 
 ## Trust model
 

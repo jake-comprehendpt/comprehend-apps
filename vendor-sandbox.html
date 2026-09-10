@@ -97,7 +97,7 @@
         <button id="refresh" title="The clinician's 'Refresh apps': same thing, without generating a note">Refresh apps</button>
         <button id="bump" title="Simulates more transcript arriving without changing the canned encounter: version +1, cached answers invalidated">+ transcript <span class="pill" id="cv">v0</span></button>
       </div>
-      <div class="status">Nothing is answered until the clinician acts — chart open, <b>Comprehend</b> (note), or Refresh apps. Changing the encounter makes the current answers stale; it does not push new ones. Same as production.</div>
+      <div class="status">Nothing is answered until the clinician acts — <b>Comprehend</b> (note) or Refresh apps. Subscribing and opening a chart do not answer. Changing the encounter makes the current answers stale; it does not push new ones. Same as production.</div>
     </div>
 
     <div class="card">
@@ -357,7 +357,7 @@
         const summary = Object.keys(types).length === 0;   // nothing asked → one plain-text summary comes back
         state.subs.set(msg.id, { structure: msg.structure, types, summary, hash: hash(msg.structure || {}), lastKey: null, lastAnswers: null });
         log('in', summary ? `subscribe [${msg.id}] empty structure → summary mode` : `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
-        renderSubs(); evaluate('subscribe', msg.id); break;
+        renderSubs(); break;   // subscribing does not answer — Comprehend or Refresh does
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
       case 'comprehend:height': { const h = Math.min(Math.max(Math.round(Number(msg.height) || 0), 240), 8000); if (h && frame.style.height !== h + 'px') { frame.style.height = h + 'px'; } break; }
@@ -431,7 +431,7 @@
   $('narrow').onclick = () => { const f = frame.parentElement; const on = f.classList.toggle('narrow'); $('narrow').textContent = on ? 'Preview full width' : 'Preview at 350 px'; $('narrow').classList.toggle('on', on); log('out', on ? 'frame at 350 px — the Chrome side panel at its usual width' : 'frame at full width'); };
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
-  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); evaluate('chart_open'); } });
+  $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); } });   // chart open re-announces the patient; nothing is answered yet
   function markStale(why) {
     state.contextVersion += 1; renderPatients(); renderSubs();
     const anyAnswered = Array.from(state.subs.values()).some((s) => s.lastAnswers);

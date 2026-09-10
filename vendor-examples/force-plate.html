@@ -178,11 +178,11 @@
   function sync(patient) {
     if (!patient || !current) return;
     const p = current, main = p.tests[0];
-    if (!main) { patient.setContext(`## Forceline\n- New athlete, no force plate test on file yet`, { id: p.id, name: p.name }); log(`setContext → ${patient.id} as "${p.name}" (${p.id}) — no tests yet`); return; }
+    if (!main) { patient.setContext(`## Forceline\n- New athlete, no force plate test on file yet`, { id: p.id, name: p.name, dob: p.dob }); log(`setContext → ${patient.id} as "${p.name}" (${p.id}) — no tests yet`); return; }
     patient.setContext(`## Forceline — ${main.name} ${p.latest}
 - ${main.name}: ${main.value} ${main.unit}${main.asym != null ? `; L/R asymmetry ${Math.abs(main.asym)}% ${main.asym < 0 ? 'L' : 'R'} deficit${Math.abs(main.asym) > 10 ? ' (above 10% threshold)' : ''}` : ''}
 ${p.tests.slice(1).map((t) => `- ${t.name}: ${t.value} ${t.unit}`).join('\n')}
-- Tester note: ${main.note || 'none'}`, { id: p.id, name: p.name });
+- Tester note: ${main.note || 'none'}`, { id: p.id, name: p.name, dob: p.dob });
     log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
     if (unsubscribe) unsubscribe();
     const discussed = {};

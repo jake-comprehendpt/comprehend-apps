@@ -216,7 +216,7 @@
 - Pain (self-reported): ${p.pain[0]} → ${p.pain[p.pain.length - 1]}
 - RTM minutes this month: ${p.rtm}
 - Program: ${p.program.map((e) => `${e.name} ${e.dose}`).join('; ')}
-${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name });
+${p.flagged ? `- Flagged: ${p.flagged}` : ''}`, { id: p.id, name: p.name, dob: p.dob });
     log(`setContext → ${patient.id} as "${p.name}" (${p.id})`);
     // 2. Questions built from THIS patient's program.
     if (unsubscribe) unsubscribe();

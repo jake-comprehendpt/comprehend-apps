@@ -332,14 +332,17 @@
       case 'comprehend:context': {
         log('in', `setContext for ${msg.patientId} as "${msg.name}" (yourId ${msg.yourId ?? '—'}, ${(msg.markdown || '').length} chars)`);
         if (!state.patient || String(msg.patientId) !== state.patient.id) return sendError(undefined, 'STALE_PATIENT');
-        if (!namesResemble(state.patient.name, msg.name)) {
+        // Same rules as production: a prior link (their id) is authoritative; equal DOB settles it;
+        // else names must resemble; else the CLINICIAN confirms — in Comprehend's UI, never the app's.
+        const ref = state.refs[`${state.appKey}:${state.patient.id}`];
+        const linkedBefore = (msg.yourId != null && ref === String(msg.yourId)) || (ref != null && ref === `name:${msg.name}`);
+        const sameDob = Boolean(msg.dob && state.patient.dob && String(msg.dob).slice(0, 10) === state.patient.dob);
+        if (!linkedBefore && !sameDob && !namesResemble(state.patient.name, msg.name)) {
+          state.pending = { markdown: msg.markdown, name: msg.name, yourId: msg.yourId ?? null, patientId: state.patient.id };
           state.lastMismatch = { theirs: msg.name, ours: state.patient.name }; renderLink();
           return sendError(undefined, 'CONTEXT_REJECTED');
         }
-        let md = typeof msg.markdown === 'string' ? msg.markdown : ''; if (md.length > MAX_BUFFER) md = md.slice(0, MAX_BUFFER) + '\n\n_[truncated at 8 KB]_';
-        state.buffers.set(state.patient.id, { markdown: md, name: msg.name, yourId: msg.yourId ?? null, providedAt: new Date().toISOString() });
-        if (msg.yourId != null) { state.refs[`${state.appKey}:${state.patient.id}`] = String(msg.yourId); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
-        state.lastMismatch = null; renderBuffer(); renderLink(); break;
+        acceptContext(msg); break;
       }
       case 'comprehend:clearContext': {
         if (state.patient && String(msg.patientId) === state.patient.id) { state.buffers.delete(state.patient.id); renderBuffer(); }
@@ -378,12 +381,27 @@
     const pill = (s) => !s.lastAnswers ? '<span class="pill">pending</span>' : s.lastKey === keyNow(s) ? '<span class="pill ok">answered</span>' : '<span class="pill" style="background:#fef3c7;color:#92400e">stale — press Comprehend</span>';
     $('subs').innerHTML = state.subs.size ? Array.from(state.subs).map(([id, s]) => `<details><summary><code>${id}</code> · ${s.summary ? 'summary (no structure)' : Object.keys(s.types).length + ' leaves'} ${pill(s)}</summary><pre>${escapeHtml(JSON.stringify(s.structure, null, 1))}</pre>${s.lastAnswers ? `<pre style="color:var(--ok)">${escapeHtml(JSON.stringify(s.lastAnswers, null, 1))}</pre>` : ''}</details>`).join('') : '<div class="status">none yet</div>';
   }
+  function acceptContext(msg) {
+    let md = typeof msg.markdown === 'string' ? msg.markdown : ''; if (md.length > MAX_BUFFER) md = md.slice(0, MAX_BUFFER) + '\n\n_[truncated at 8 KB]_';
+    state.buffers.set(state.patient.id, { markdown: md, name: msg.name, yourId: msg.yourId ?? null, providedAt: new Date().toISOString() });
+    if (msg.yourId != null) { state.refs[`${state.appKey}:${state.patient.id}`] = String(msg.yourId); localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
+    state.lastMismatch = null; state.pending = null; renderBuffer(); renderLink();
+  }
+  // The clinician's "yes, same patient": link, accept what was rejected, re-announce the patient with yourId set.
+  function confirmLink() {
+    const p = state.pending; if (!p || !state.patient || p.patientId !== state.patient.id) return;
+    if (p.yourId == null) { state.refs[`${state.appKey}:${state.patient.id}`] = `name:${p.name}`; localStorage.setItem(REFS_KEY, JSON.stringify(state.refs)); }
+    acceptContext(p);
+    log('out', `clinician confirmed link: ${state.patient.name} ↔ "${p.name}"${p.yourId ? ' (' + p.yourId + ')' : ''} — patient(changed) with yourId`);
+    sendPatient('changed');
+  }
   function renderLink() {
     const el = $('linkStatus'); el.className = 'status'; $('clinicianToast').innerHTML = '';
     if (!state.origin) { el.textContent = 'Load your app first.'; return; }
     if (state.lastMismatch) {
       el.className = 'status bad'; el.textContent = 'Not linked — context rejected.';
-      $('clinicianToast').innerHTML = `<div class="toast">Clinician sees: <b>Your app has "${escapeHtml(state.lastMismatch.theirs)}" open; this visit is "${escapeHtml(state.lastMismatch.ours)}". Not linked — open the same patient in both places.</b><br><span style="opacity:.8">Your app only received <code>CONTEXT_REJECTED</code>.</span></div>`;
+      $('clinicianToast').innerHTML = `<div class="toast">Clinician sees: <b>Your app has "${escapeHtml(state.lastMismatch.theirs)}" open; this visit is "${escapeHtml(state.lastMismatch.ours)}". Not linked.</b> <button id="confirmLink" style="margin-left:8px">Yes, same patient — link them</button><br><span style="opacity:.8">Your app only received <code>CONTEXT_REJECTED</code>. The clinician decides here, in Comprehend — never in your UI.</span></div>`;
+      $('confirmLink').onclick = confirmLink;
       return;
     }
     if (!state.patient) { el.textContent = 'No chart open in Comprehend.'; return; }

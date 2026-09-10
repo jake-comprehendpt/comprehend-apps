@@ -8,7 +8,7 @@
  *   comprehend.on('error',   ({ code }) => …)              // STALE_PATIENT | CONTEXT_REJECTED | BAD_STRUCTURE | TOO_MANY_SUBSCRIPTIONS
  *
  *   CONTENT (you → us, on the patient handle)
- *   patient.setContext(markdown, { id, name })             // what you know about YOUR patient {id, name}; this is also the link
+ *   patient.setContext(markdown, { id, name, dob? })       // what you know about YOUR patient; this is also the link (dob helps when names differ)
  *   patient.clearContext()
  *
  *   QUESTIONS (you ask, we answer when the clinician acts)
@@ -97,7 +97,8 @@
           patientId: handle.id,
           markdown: markdown,
           yourId: you && you.id != null ? String(you.id) : null,
-          name: yourName.trim()
+          name: yourName.trim(),
+          dob: you && you.dob ? String(you.dob) : null
         });
       },
       clearContext: function () {

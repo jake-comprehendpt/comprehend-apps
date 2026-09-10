@@ -357,7 +357,10 @@
         const summary = Object.keys(types).length === 0;   // nothing asked → one plain-text summary comes back
         state.subs.set(msg.id, { structure: msg.structure, types, summary, hash: hash(msg.structure || {}), lastKey: null, lastAnswers: null });
         log('in', summary ? `subscribe [${msg.id}] empty structure → summary mode` : `subscribe [${msg.id}] ${Object.keys(types).length} leaves`);
-        renderSubs(); break;   // subscribing does not answer — Comprehend or Refresh does
+        renderSubs();
+        // Subscribing does not answer on its own; it only re-arms an evaluation the clinician just asked for.
+        if (state.pendingEval && Date.now() < state.pendingEval.until) scheduleEval(state.pendingEval.reason);
+        break;
       }
       case 'comprehend:unsubscribe': state.subs.delete(msg.id); log('in', `unsubscribe [${msg.id}]`); renderSubs(); break;
       case 'comprehend:height': { const h = Math.min(Math.max(Math.round(Number(msg.height) || 0), 240), 8000); if (h && frame.style.height !== h + 'px') { frame.style.height = h + 'px'; } break; }
@@ -441,7 +444,13 @@
   }
   $('scenarios').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (state.scenario === b.dataset.s) return; state.scenario = b.dataset.s; markStale('Encounter changed'); });
   $('bump').onclick = () => markStale('New transcript content');
-  const act = (reason) => { if (!state.ready) return; $('staleHint').style.display = 'none'; sendPatient('refresh'); evaluate(reason); renderSubs(); };
+  // Clinician action: re-announce the patient (apps re-subscribe), then evaluate once the dust settles.
+  function scheduleEval(reason, delay = 350) {
+    if (state.pendingEval) clearTimeout(state.pendingEval.timer);
+    const until = (state.pendingEval && state.pendingEval.until) || Date.now() + 2500;
+    state.pendingEval = { reason, until, timer: setTimeout(() => { state.pendingEval = null; evaluate(reason); renderSubs(); }, delay) };
+  }
+  const act = (reason) => { if (!state.ready) return; $('staleHint').style.display = 'none'; sendPatient('refresh'); scheduleEval(reason); };
   $('comprehend').onclick = () => act('note');
   $('refresh').onclick = () => act('refresh');
   $('clearRefs').onclick = () => { state.refs = {}; localStorage.removeItem(REFS_KEY); renderLink(); log('out', 'links forgotten'); };

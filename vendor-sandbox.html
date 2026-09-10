@@ -52,7 +52,11 @@
       <div class="row" style="margin-top:8px">
         <button class="primary" id="load">Load</button>
         <button id="loadExample" title="Loads the HEP example that ships with Comprehend">Load example app</button>
-        <button id="narrow" title="Most clinicians run Comprehend as the Chrome side panel at its minimum width (~350 px). This is what they see.">Preview at 350 px</button>
+      </div>
+      <div class="status" style="margin-top:10px"><b>Width.</b> Most clinicians run Comprehend as the Chrome side panel beside their EMR, and the panel opens at <b>350 px</b>; almost nobody widens it. Your app gets about 330 px. The frame below is held at that width by default — build for it first, then check full width.</div>
+      <div class="row" style="margin-top:6px">
+        <button class="primary on" id="narrow" title="The Chrome side panel's default width — where most clinicians will use your app">Side panel · 350 px</button>
+        <button id="wide" title="The web app, or a widened panel">Full width</button>
       </div>
       <div class="status" id="targetStatus">Not loaded. We pin <code>event.origin</code> to your URL's origin, exactly like production.</div>
       <div id="framing" class="status" style="display:none"></div>
@@ -463,7 +467,16 @@
   // patient(ready) goes out when comprehend.js says hello, not on load — a script injected after load would miss it.
 
   $('load').onclick = () => load($('target').value.trim());
-  $('narrow').onclick = () => { const f = frame.parentElement; const on = f.classList.toggle('narrow'); $('narrow').textContent = on ? 'Preview full width' : 'Preview at 350 px'; $('narrow').classList.toggle('on', on); log('out', on ? 'frame at 350 px — the Chrome side panel at its usual width' : 'frame at full width'); };
+  // 350 px is the default: that is the Chrome side panel as clinicians actually have it.
+  function setNarrow(on) {
+    frame.parentElement.classList.toggle('narrow', on);
+    $('narrow').classList.toggle('on', on); $('narrow').classList.toggle('primary', on);
+    $('wide').classList.toggle('on', !on); $('wide').classList.toggle('primary', !on);
+    log('out', on ? 'frame at 350 px — the Chrome side panel at its default width' : 'frame at full width');
+  }
+  $('narrow').onclick = () => setNarrow(true);
+  $('wide').onclick = () => setNarrow(false);
+  frame.parentElement.classList.add('narrow');
   $('loadExample').onclick = () => { $('target').value = new URL('./vendor-examples/hep-rtm.html', location.href).href; load($('target').value); };
   $('target').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
   $('patients').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const prev = state.patient && state.patient.id; state.patient = PATIENTS.find((p) => p.id === b.dataset.p) || null; if ((state.patient && state.patient.id) !== prev) { state.contextVersion = 0; state.lastMismatch = null; if (state.patient) state.pendingAssign = null; } renderPatients(); renderBuffer(); renderLink(); if (state.ready) { sendPatient('changed'); } });   // chart open re-announces the patient; nothing is answered yet

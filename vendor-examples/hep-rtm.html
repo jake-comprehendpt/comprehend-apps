@@ -118,6 +118,51 @@
         { name: 'Bird dog',            dose: '3 × 8 each',    week: [1,1,1,1,1,1,1] },
         { name: 'Dead bug',            dose: '3 × 10',        week: [1,1,1,1,1,1,1] },
         { name: 'Cat-camel',           dose: '2 × 10',        week: [1,1,1,1,1,1,1] } ] },
+    { id: 'C-1004', name: 'Jacob Michalski', dob: '1990-05-17', dx: 'L shoulder impingement', pt: 'J. Ortiz, DPT', start: 'Aug 25', adherence: 86, sessions: 6, pain: [5,4,4,3,3,2,2], rtm: 18,
+      flagged: '',
+      program: [
+        { name: 'Scapular wall slides', dose: '2 × 12', week: [1,1,1,0,1,1,1] },
+        { name: 'Side-lying ER', dose: '3 × 10', week: [1,1,1,1,1,1,0] },
+        { name: 'Prone Y raise', dose: '2 × 10', week: [1,1,0,1,1,1,1] },
+        { name: 'Doorway pec stretch', dose: '3 × 30 s', week: [1,1,1,1,1,1,1] } ] },
+    { id: 'C-1005', name: 'Priya Raman', dob: '1984-02-09', dx: 'Plantar fasciitis, R', pt: 'M. Alvarez, PT', start: 'Sep 1', adherence: 57, sessions: 4, pain: [7,6,6,6,5,5,5], rtm: 9,
+      flagged: 'Calf raises skipped 3 days — “no time in the morning”.',
+      program: [
+        { name: 'Calf raises (eccentric)', dose: '3 × 15', week: [1,0,1,0,1,0,1] },
+        { name: 'Plantar fascia stretch', dose: '3 × 30 s', week: [1,1,1,1,1,1,1] },
+        { name: 'Towel curls', dose: '2 × 15', week: [1,1,0,0,1,0,0] } ] },
+    { id: 'C-1006', name: 'Marcus Lee', dob: '1977-08-23', dx: 'Chronic LBP · flexion intolerant', pt: 'J. Ortiz, DPT', start: 'Jul 14', adherence: 100, sessions: 7, pain: [4,4,3,3,3,2,2], rtm: 31,
+      flagged: '',
+      program: [
+        { name: 'McGill curl-up', dose: '3 × 8', week: [1,1,1,1,1,1,1] },
+        { name: 'Side plank', dose: '3 × 20 s', week: [1,1,1,1,1,1,1] },
+        { name: 'Bird dog', dose: '3 × 8 each', week: [1,1,1,1,1,1,1] },
+        { name: 'Hip hinge', dose: '3 × 10', week: [1,1,1,1,1,1,1] } ] },
+    { id: 'C-1007', name: 'Elena Petrova', dob: '1995-11-30', dx: 'ACL reconstruction · wk 10', pt: 'M. Alvarez, PT', start: 'Aug 11', adherence: 71, sessions: 5, pain: [2,2,3,2,2,1,1], rtm: 14,
+      flagged: 'Reported swelling after step-downs on Thursday.',
+      program: [
+        { name: 'Step-downs', dose: '3 × 10 each', week: [1,1,1,1,0,1,0] },
+        { name: 'Single-leg balance', dose: '3 × 30 s', week: [1,1,1,1,1,1,0] },
+        { name: 'Leg press (light)', dose: '3 × 12', week: [1,1,0,1,0,1,0] },
+        { name: 'Hamstring curl', dose: '3 × 12', week: [1,1,1,1,1,1,1] } ] },
+    { id: 'C-1008', name: 'Darius Okafor', dob: '1969-06-12', dx: 'Rotator cuff repair · wk 8', pt: 'J. Ortiz, DPT', start: 'Jul 28', adherence: 43, sessions: 3, pain: [6,6,5,5,5,4,4], rtm: 7,
+      flagged: 'Reports pain > 5/10 with ER band work; stopped on his own.',
+      program: [
+        { name: 'Pendulums', dose: '3 × 1 min', week: [1,1,1,0,0,0,0] },
+        { name: 'Table slides', dose: '2 × 10', week: [1,1,0,0,1,0,0] },
+        { name: 'ER with band', dose: '2 × 10', week: [1,0,0,0,0,0,0] } ] },
+    { id: 'C-1009', name: 'Hannah Whitfield', dob: '2001-03-04', dx: 'Patellofemoral pain, bilateral', pt: 'M. Alvarez, PT', start: 'Sep 3', adherence: 100, sessions: 7, pain: [3,3,3,2,2,2,1], rtm: 12,
+      flagged: '',
+      program: [
+        { name: 'Clamshells', dose: '3 × 15', week: [1,1,1,1,1,1,1] },
+        { name: 'Wall sit', dose: '3 × 30 s', week: [1,1,1,1,1,1,1] },
+        { name: 'Step-ups', dose: '2 × 10 each', week: [1,1,1,1,1,1,1] } ] },
+    { id: 'C-1010', name: 'Grace Okonkwo', dob: '1958-09-21', dx: 'THA (anterior) · wk 4', pt: 'J. Ortiz, DPT', start: 'Aug 20', adherence: 83, sessions: 6, pain: [4,4,3,3,2,2,2], rtm: 16,
+      flagged: '',
+      program: [
+        { name: 'Heel slides', dose: '3 × 10', week: [1,1,1,1,1,1,0] },
+        { name: 'Standing hip abduction', dose: '2 × 10', week: [1,1,1,0,1,1,1] },
+        { name: 'Sit-to-stand', dose: '3 × 8', week: [1,1,1,1,1,1,1] } ] },
   ];
   let current = null, unsubscribe = null, latest = null;   // latest = last answers from Comprehend, per patient id
   const $ = (id) => document.getElementById(id);

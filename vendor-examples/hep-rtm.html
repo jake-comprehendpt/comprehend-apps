@@ -69,8 +69,10 @@
     th, td { padding: 7px 10px; }
   }
   @media (max-width: 400px) {
-    .tiles { grid-template-columns: 1fr 1fr; } .tile small { font-size: 10px; }
-    .week i { width: 7px; height: 7px; }
+    .tiles { grid-template-columns: 1fr; } .tile { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 8px 12px; }
+    .tile small { flex: 1 1 100%; font-size: 10px; } .tile b { font-size: 18px; margin: 0; } .tile .trend { font-size: 11px; }
+    .week i { width: 7px; height: 7px; } th, td { padding: 6px 8px; font-size: 12px; }
+    .card h3 { padding: 9px 12px; } .visit { padding: 10px 12px; } .flag { margin: 8px 10px; font-size: 12px; }
     .kv { grid-template-columns: 1fr; gap: 2px; } .kv span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-top: 6px; }
   }
 </style>

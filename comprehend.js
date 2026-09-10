@@ -42,6 +42,14 @@
       EXTENSION_HOSTS.indexOf(altHost) !== -1)
   ) {
     HOST_ORIGIN = altHost;
+  } else if (
+    /^chrome-extension:\/\/[a-p]{32}$/.test(altHost) &&
+    /^(dev\.comprehendpt\.com|localhost|127\.0\.0\.1)$/.test(global.location.hostname)
+  ) {
+    // Dev only: pages served from dev.comprehendpt.com or localhost accept any
+    // Comprehend extension build (unpacked builds get a fresh id each install).
+    // Production pages keep the explicit allowlist above.
+    HOST_ORIGIN = altHost;
   } else if ((altHost === 'file://' || altHost === 'null') && global.location.protocol === 'file:') {
     // Dev convenience only: the sandbox and this page were both opened straight
     // from disk. Browsers give file pages a null origin, so origin pinning cannot

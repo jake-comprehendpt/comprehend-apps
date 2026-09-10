@@ -272,7 +272,8 @@
   // Report our content height whenever it changes, so the host can size the
   // frame to fit and the clinician scrolls one page, not a frame inside a page.
   // Automatic — nothing for the vendor to call. Keep your page's natural height
-  // (no fixed-height body with its own scroll) and this just works.
+  // (no fixed-height body with its own scroll, no min-height in vh) and fit your
+  // width (~350 px): the host frame never shows scrollbars of its own.
   (function reportHeight() {
     if (global.top === global) return;
     var last = 0, pending = null;

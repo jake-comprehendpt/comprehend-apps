@@ -16,7 +16,11 @@
   .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
   .chip.on { border-color: #a7f3d0; background: var(--brand-soft); color: #065f46; } .chip.on .dot { background: #10b981; }
   .chip.err { border-color: #fecaca; background: #fef2f2; color: #991b1b; } .chip.err .dot { background: #ef4444; }
-  main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 52px); }
+  /* No min-height tied to the viewport: inside Comprehend the frame is sized to this document's height, so
+     a viewport-relative minimum would feed back into the measurement (frame → 100vh → doc → frame). */
+  main { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  aside, section { min-width: 0; }   /* a 1fr track never shrinks below its item's min-content; the roster/table must not widen the page */
+  html, body { overflow-x: hidden; }
   aside { background: #fff; border-right: 1px solid var(--line); padding: 14px 10px; }
   aside h4 { margin: 4px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .pt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 8px; border: 0; background: none; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; }
@@ -55,7 +59,7 @@
   /* ---- small widths (Comprehend's side panel is ~350px) ------------------------------- */
   @media (max-width: 720px) {
     nav { padding: 0 12px; gap: 8px; } nav small { display: none; } .chip { font-size: 11px; padding: 4px 8px; }
-    main { grid-template-columns: 1fr; }
+    main { grid-template-columns: minmax(0, 1fr); }
     aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; }
     aside h4 { display: none; }
     #roster { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }

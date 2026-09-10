@@ -15,7 +15,10 @@
   .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
   .chip.on { border-color: rgba(52,211,153,.4); color: #a7f3d0; } .chip.on .dot { background: var(--good); }
   .chip.err { border-color: rgba(248,113,113,.4); color: #fecaca; } .chip.err .dot { background: var(--bad); }
-  main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 52px); }
+  /* No viewport-relative min-height (see hep-rtm.html): the frame is sized to this document. */
+  main { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  aside, section { min-width: 0; }   /* a 1fr track never shrinks below its item's min-content; the roster/table must not widen the page */
+  html, body { overflow-x: hidden; }
   aside { background: #0d1426; border-right: 1px solid var(--line); padding: 14px 10px; }
   aside h4 { margin: 4px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .pt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 8px; border: 0; background: none; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; }
@@ -50,7 +53,7 @@
   /* ---- small widths (Comprehend's side panel is ~350px) ------------------------------- */
   @media (max-width: 720px) {
     nav { padding: 0 12px; gap: 8px; } nav small { display: none; } .chip { font-size: 11px; padding: 4px 8px; }
-    main { grid-template-columns: 1fr; }
+    main { grid-template-columns: minmax(0, 1fr); }
     aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; } aside h4 { display: none; }
     #roster { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .pt { width: auto; flex: none; padding: 6px 10px 6px 6px; border: 1px solid var(--line); border-radius: 999px; }

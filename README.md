@@ -4,7 +4,7 @@
 
 Comprehend is the ambient AI that listens to the PT visit and writes the note inside the EMRs clinics already use (25+ of them). Bring your app in — as it is, your UI and your login, one script tag — and two things happen: what you know about the patient enters the note, attributed to you, in whatever EMR the clinic runs; and what happened in the room comes back to you, per patient, as the note is written — which exercises were performed, what was progressed or dropped, what the patient reported, the plan. RTM and HEP programs get documented the way billing needs along the way.
 
-- **Developer guide:** https://app.comprehendpt.com/developers.html
+- **Developer guide:** https://app.comprehendpt.com/partners.html
 - **Sandbox (no account needed):** https://app.comprehendpt.com/vendor-sandbox.html — a fake Comprehend around your real app, pointed at `localhost`, with a server-side check that both our origins can frame you
 - **Examples:** [`vendor-examples/`](vendor-examples/) — a home-exercise / RTM app (per-patient subscriptions built from each patient's program) and a force-plate app
 - **The script:** `https://app.comprehendpt.com/comprehend.js` — load it from there, don't vendor a copy; it pins the host origin and evolves with the contract

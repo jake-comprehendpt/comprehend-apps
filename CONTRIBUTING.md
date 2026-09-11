@@ -1,6 +1,6 @@
 # Getting listed in the Comprehend partner directory
 
-Listed apps show up as one-click "Register" cards in every clinic's **Admin Settings → Apps**, and on https://app.comprehendpt.com/developers.html#directory. Listing is a reviewed pull request against [`partners.json`](partners.json) in this repo.
+Listed apps show up as one-click "Register" cards in every clinic's **Admin Settings → Apps**, and on https://app.comprehendpt.com/partners.html#directory. Listing is a reviewed pull request against [`partners.json`](partners.json) in this repo.
 
 ## Before you open the PR
 

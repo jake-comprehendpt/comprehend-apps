@@ -4,7 +4,7 @@
   "description": "Home exercise programs and remote therapeutic monitoring. Asks, per patient, whether each prescribed exercise was performed today.",
   "icon": "./hep-rtm-icon.svg",
   "color": "#0f766e",
-  "docs": "/developers.html",
+  "docs": "/partners.html",
   "baaContact": "partners@comprehendpt.ai",
   "categories": [
     "hep",

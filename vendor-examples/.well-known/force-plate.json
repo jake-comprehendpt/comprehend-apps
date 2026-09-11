@@ -4,7 +4,7 @@
   "description": "Force plate testing for return to sport. Pushes the latest test into the note and asks which results the PT discussed.",
   "icon": "./force-plate-icon.svg",
   "color": "#6366f1",
-  "docs": "/developers.html",
+  "docs": "/partners.html",
   "baaContact": "partners@comprehendpt.ai",
   "categories": [
     "sensor",
